@@ -83,6 +83,10 @@
   <button type="submit" class="btn-primary py-3.5 rounded-xl text-sm tracking-wide mt-2">Guardar alterações</button>
 </form>
 
+<div class="px-5 pb-10">
+  <a href="{{ url_for('auth.logout') }}" class="btn-secondary block text-center py-3 rounded-xl text-sm" style="color:var(--accent-danger)">⏻ Sair</a>
+</div>
+
 <script>
   document.querySelectorAll('#footGroup .foot-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
