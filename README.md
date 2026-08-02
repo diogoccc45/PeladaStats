@@ -121,3 +121,6 @@ reactivating brings it straight back).
 - No way to edit or delete a mistakenly-created match yet.
 - No pagination — irrelevant at this group's scale, but would matter if it
   ever grew a lot.
+
+
+Note📝: Made with Claude Sonnet 4.5 Medium Effort :)
