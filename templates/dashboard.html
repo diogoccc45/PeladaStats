@@ -28,7 +28,7 @@
         <div class="ovr-badge font-display font-700 text-5xl leading-none" style="color:var(--accent-turf)">{{ top.overall }}</div>
         <div class="eyebrow mt-1">Overall {% if top.trend_display %}<span class="trend {{ top.trend_class }}">{{ top.trend_display }}</span>{% endif %}</div>
       </div>
-      <div class="w-16 h-16 rounded-xl flex items-center justify-center font-display font-700 text-xl portrait-slot" {% if top.photo %}style="background-image:url('{{ top.photo }}'); background-size:{{ top.photo_zoom }}%; background-position:{{ top.photo_x }}% {{ top.photo_y }}%;"{% endif %}>
+      <div class="w-16 h-16 rounded-xl flex items-center justify-center font-display font-700 text-xl portrait-slot" {% if top.photo %}style="background-image:url('{{ top.photo }}')"{% endif %}>
         {% if not top.photo %}{{ top.initials }}{% endif %}
       </div>
     </div>
@@ -100,14 +100,13 @@
 
   function cellPlayer(p){
     const avatar = p.photo
-      ? `<div class="w-8 h-8 rounded-full portrait-slot flex-shrink-0" style="background-image:url('${p.photo}'); background-size:${p.photo_zoom}%; background-position:${p.photo_x}% ${p.photo_y}%;"></div>`
+      ? `<div class="w-8 h-8 rounded-full portrait-slot flex-shrink-0" style="background-image:url('${p.photo}')"></div>`
       : `<div class="w-8 h-8 rounded-full flex items-center justify-center font-display font-700 text-xs flex-shrink-0" style="background:var(--bg-surface-2)">${p.initials}</div>`;
     return `<div class="player-cell"><a href="/perfil/${p.id}" class="flex items-center gap-2.5" style="color:var(--text-primary)">${avatar}<span>${p.name}</span></a></div>`;
   }
 
   function renderTable(){
-    const key = sortKey === 'overall' ? 'overall_raw' : sortKey;
-    const sorted = [...players].sort((a,b)=> (a[key] > b[key] ? 1 : a[key] < b[key] ? -1 : 0) * sortDir);
+    const sorted = [...players].sort((a,b)=> (a[sortKey] > b[sortKey] ? 1 : a[sortKey] < b[sortKey] ? -1 : 0) * sortDir);
     const body = document.getElementById('statsTableBody');
     body.innerHTML = sorted.map(p => `
       <tr>
