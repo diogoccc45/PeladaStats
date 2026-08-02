@@ -298,6 +298,25 @@ table.stats-table tbody tr:last-child td{ border-bottom:none; }
   width:100%; accent-color:var(--accent-turf); cursor:pointer;
 }
 
+/* Danger zone (account settings) */
+.danger-zone{
+  border:1px solid rgba(255,107,107,0.35);
+  border-radius:16px;
+  background:rgba(255,107,107,0.05);
+  padding:16px;
+}
+.danger-divider{
+  height:1px; background:rgba(255,107,107,0.2); margin:18px 0;
+}
+.btn-danger{
+  background:transparent;
+  border:1px solid var(--accent-danger);
+  color:var(--accent-danger);
+  font-family:'Rajdhani',sans-serif; font-weight:700;
+  transition:background .15s ease, color .15s ease;
+}
+.btn-danger:hover{ background:var(--accent-danger); color:#1A0505; }
+
 /* Theme toggle switch */
 .switch{
   width:46px; height:26px; border-radius:999px;

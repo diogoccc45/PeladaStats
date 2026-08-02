@@ -1,5 +1,6 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import get_db
 
@@ -71,3 +72,67 @@ def definicoes():
 
     user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     return render_template("settings.html", user=user)
+
+
+@bp.route("/username", methods=["POST"])
+@login_required
+def change_username():
+    db = get_db()
+    user_id = int(current_user.get_id())
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+    new_username = request.form.get("new_username", "").strip()
+    current_password = request.form.get("current_password_username", "")
+
+    erros = []
+    if len(new_username) < 3:
+        erros.append("O novo username tem de ter pelo menos 3 caracteres.")
+    if not check_password_hash(user["password_hash"], current_password):
+        erros.append("Password atual incorreta.")
+    if not erros and new_username != user["username"]:
+        clash = db.execute(
+            "SELECT 1 FROM users WHERE username = ? AND id != ?", (new_username, user_id)
+        ).fetchone()
+        if clash:
+            erros.append("Esse username já está a ser usado.")
+
+    if erros:
+        for erro in erros:
+            flash(erro)
+    else:
+        db.execute("UPDATE users SET username = ? WHERE id = ?", (new_username, user_id))
+        db.commit()
+        flash("Username atualizado.")
+    return redirect(url_for("settings.definicoes"))
+
+
+@bp.route("/password", methods=["POST"])
+@login_required
+def change_password():
+    db = get_db()
+    user_id = int(current_user.get_id())
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+    current_password = request.form.get("current_password_password", "")
+    new_password = request.form.get("new_password", "")
+    confirm_password = request.form.get("confirm_password", "")
+
+    erros = []
+    if not check_password_hash(user["password_hash"], current_password):
+        erros.append("Password atual incorreta.")
+    if len(new_password) < 4:
+        erros.append("A password nova tem de ter pelo menos 4 caracteres.")
+    if new_password != confirm_password:
+        erros.append("As passwords novas não coincidem.")
+
+    if erros:
+        for erro in erros:
+            flash(erro)
+    else:
+        db.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(new_password), user_id),
+        )
+        db.commit()
+        flash("Password atualizada.")
+    return redirect(url_for("settings.definicoes"))

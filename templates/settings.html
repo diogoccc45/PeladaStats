@@ -83,7 +83,33 @@
   <button type="submit" class="btn-primary py-3.5 rounded-xl text-sm tracking-wide mt-2">Guardar alterações</button>
 </form>
 
-<div class="px-5 pb-10">
+<div class="px-5 pt-2">
+  <div class="eyebrow mb-2" style="color:var(--accent-danger)">Zona de perigo</div>
+  <div class="danger-zone">
+
+    <div class="font-600 text-sm">Mudar username</div>
+    <div class="text-xs mt-0.5 mb-3" style="color:var(--text-muted)">Usado para entrares — atual: {{ user.username }}</div>
+    <form method="POST" action="{{ url_for('settings.change_username') }}" class="flex flex-col gap-3">
+      <input type="text" name="new_username" placeholder="Novo username" class="w-full px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      <input type="password" name="current_password_username" placeholder="Password atual" class="w-full px-3.5 py-3 rounded-xl text-sm">
+      <button type="submit" class="btn-danger py-2.5 rounded-xl text-sm">Atualizar username</button>
+    </form>
+
+    <div class="danger-divider"></div>
+
+    <div class="font-600 text-sm">Mudar password</div>
+    <div class="text-xs mt-0.5 mb-3" style="color:var(--text-muted)">Precisas da password atual para confirmar.</div>
+    <form method="POST" action="{{ url_for('settings.change_password') }}" class="flex flex-col gap-3">
+      <input type="password" name="current_password_password" placeholder="Password atual" class="w-full px-3.5 py-3 rounded-xl text-sm">
+      <input type="password" name="new_password" placeholder="Password nova" class="w-full px-3.5 py-3 rounded-xl text-sm">
+      <input type="password" name="confirm_password" placeholder="Confirmar password nova" class="w-full px-3.5 py-3 rounded-xl text-sm">
+      <button type="submit" class="btn-danger py-2.5 rounded-xl text-sm">Atualizar password</button>
+    </form>
+
+  </div>
+</div>
+
+<div class="px-5 pb-10 pt-6">
   <a href="{{ url_for('auth.logout') }}" class="btn-secondary block text-center py-3 rounded-xl text-sm" style="color:var(--accent-danger)">⏻ Sair</a>
 </div>
 
