@@ -1,0 +1,146 @@
+{% extends "base_app.html" %}
+{% block title %}Dashboard — PeladaStats{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block app_content %}
+
+{% if pending_mine > 0 %}
+<div class="px-5 pt-5">
+  <a href="{{ url_for('matches.lista') }}" class="pending-banner urgent">
+    <span class="text-sm font-600">⚠️ Tens {{ pending_mine }} jogo{{ 's' if pending_mine != 1 }} por preencher</span>
+    <span class="badge badge-pendente">Preencher →</span>
+  </a>
+</div>
+{% elif pending_total > 0 %}
+<div class="px-5 pt-5">
+  <a href="{{ url_for('matches.lista') }}" class="pending-banner info">
+    <span class="text-sm" style="color:var(--text-muted)">{{ pending_total }} jogo{{ 's' if pending_total != 1 }} a aguardar confirmação</span>
+    <span class="badge badge-pendente">Ver →</span>
+  </a>
+</div>
+{% endif %}
+
+{% if top %}
+<div class="px-5 {{ 'pt-4' if (pending_mine > 0 or pending_total > 0) else 'pt-5' }}">
+  <div class="eyebrow mb-2">Nº1 do momento</div>
+  <div class="hero-card rounded-2xl p-5">
+    <div class="flex items-start justify-between relative z-10">
+      <div>
+        <div class="ovr-badge font-display font-700 text-5xl leading-none" style="color:var(--accent-turf)">{{ top.overall }}</div>
+        <div class="eyebrow mt-1">Overall {% if top.trend_display %}<span class="trend {{ top.trend_class }}">{{ top.trend_display }}</span>{% endif %}</div>
+      </div>
+      <div class="w-16 h-16 rounded-xl flex items-center justify-center font-display font-700 text-xl portrait-slot" {% if top.photo %}style="background-image:url('{{ top.photo }}'); background-size:{{ top.photo_zoom }}%; background-position:{{ top.photo_x }}% {{ top.photo_y }}%;"{% endif %}>
+        {% if not top.photo %}{{ top.initials }}{% endif %}
+      </div>
+    </div>
+    <div class="relative z-10 mt-4">
+      <div class="font-display font-700 text-2xl">{{ top.name }}</div>
+      <div class="text-xs mt-1" style="color:var(--text-muted)">{{ top.form_emoji }} {{ top.form_label }}</div>
+    </div>
+    <div class="relative z-10 grid grid-cols-4 gap-2 mt-4 pt-4" style="border-top:1px solid var(--border-glass);">
+      <div class="text-center">
+        <div class="font-display font-700 tabular text-lg">{{ top.goals }}</div>
+        <div class="eyebrow">Golos</div>
+      </div>
+      <div class="text-center">
+        <div class="font-display font-700 tabular text-lg">{{ top.assists }}</div>
+        <div class="eyebrow">Assist.</div>
+      </div>
+      <div class="text-center">
+        <div class="font-display font-700 tabular text-lg" style="color:var(--accent-gold)">{{ top.mvp }}</div>
+        <div class="eyebrow">MVP</div>
+      </div>
+      <div class="text-center">
+        <div class="font-display font-700 tabular text-lg">{{ top.wins }}/{{ top.games }}</div>
+        <div class="eyebrow">V / Jogos</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="px-5 pt-6">
+  <div class="flex items-center justify-between mb-2">
+    <div class="eyebrow">Tabela completa</div>
+    <div class="text-[11px]" style="color:var(--text-muted)">toca numa coluna para ordenar</div>
+  </div>
+
+  <div class="stats-table-wrap">
+    <table class="stats-table" id="statsTable">
+      <thead>
+        <tr>
+          <th data-key="name">Jogador</th>
+          <th data-key="overall">OVR</th>
+          <th data-key="games">Jogos</th>
+          <th data-key="goals">Golos</th>
+          <th data-key="assists">Assist.</th>
+          <th data-key="involvements">Part.</th>
+          <th data-key="mvp">MVP</th>
+          <th data-key="wins">V</th>
+          <th data-key="draws">E</th>
+          <th data-key="losses">D</th>
+          <th data-key="avg_goals">Méd. G</th>
+          <th data-key="avg_assists">Méd. A</th>
+        </tr>
+      </thead>
+      <tbody id="statsTableBody"></tbody>
+    </table>
+  </div>
+
+  {% if not top or top.games == 0 %}
+  <div class="mt-4 text-center text-sm" style="color:var(--text-muted)">
+    Ainda não há peladas confirmadas. Cria um jogo em "Jogos" para começares a preencher a tabela.
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  const players = {{ players_json|safe }};
+  let sortKey = 'overall';
+  let sortDir = -1;
+
+  function cellPlayer(p){
+    const avatar = p.photo
+      ? `<div class="w-8 h-8 rounded-full portrait-slot flex-shrink-0" style="background-image:url('${p.photo}'); background-size:${p.photo_zoom}%; background-position:${p.photo_x}% ${p.photo_y}%;"></div>`
+      : `<div class="w-8 h-8 rounded-full flex items-center justify-center font-display font-700 text-xs flex-shrink-0" style="background:var(--bg-surface-2)">${p.initials}</div>`;
+    return `<div class="player-cell"><a href="/perfil/${p.id}" class="flex items-center gap-2.5" style="color:var(--text-primary)">${avatar}<span>${p.name}</span></a></div>`;
+  }
+
+  function renderTable(){
+    const key = sortKey === 'overall' ? 'overall_raw' : sortKey;
+    const sorted = [...players].sort((a,b)=> (a[key] > b[key] ? 1 : a[key] < b[key] ? -1 : 0) * sortDir);
+    const body = document.getElementById('statsTableBody');
+    body.innerHTML = sorted.map(p => `
+      <tr>
+        <td>${cellPlayer(p)}</td>
+        <td class="tabular" style="color:var(--accent-turf)">${p.overall}${p.trend_display ? `<span class="trend ${p.trend_class}">${p.trend_display}</span>` : ''}</td>
+        <td class="tabular">${p.games}</td>
+        <td class="tabular">${p.goals}</td>
+        <td class="tabular">${p.assists}</td>
+        <td class="tabular">${p.involvements}</td>
+        <td class="tabular" style="color:var(--accent-gold)">${p.mvp}</td>
+        <td class="tabular">${p.wins}</td>
+        <td class="tabular">${p.draws}</td>
+        <td class="tabular">${p.losses}</td>
+        <td class="tabular">${p.avg_goals}</td>
+        <td class="tabular">${p.avg_assists}</td>
+      </tr>
+    `).join('');
+
+    document.querySelectorAll('#statsTable th').forEach(th=>{
+      th.style.color = th.dataset.key === sortKey ? 'var(--accent-turf)' : '';
+    });
+  }
+
+  document.querySelectorAll('#statsTable th').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.key;
+      if(key === sortKey){ sortDir *= -1; } else { sortKey = key; sortDir = -1; }
+      renderTable();
+    });
+    th.style.cursor = 'pointer';
+  });
+
+  renderTable();
+</script>
+
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Entrar — PeladaStats{% endblock %}
+{% block content %}
+
+<div class="max-w-md mx-auto min-h-screen flex flex-col justify-center px-5 py-10">
+
+  <div class="flex items-center gap-2 justify-center mb-8">
+    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg, var(--accent-turf), var(--accent-turf-dim));">
+      <span class="font-display font-700 text-sm text-[#0A0E17]">P</span>
+    </div>
+    <span class="font-display font-700 text-lg tracking-wide">PELADA<span style="color:var(--accent-turf)">STATS</span></span>
+  </div>
+
+  <div class="glass rounded-2xl p-6">
+    <div class="font-display font-700 text-xl mb-1">Entrar</div>
+    <div class="text-sm mb-6" style="color:var(--text-muted)">Sem emails, só o teu username.</div>
+
+    <form method="POST" class="flex flex-col gap-4">
+      <div>
+        <label class="field-label">Username</label>
+        <input type="text" name="username" value="{{ username }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off" autofocus>
+      </div>
+      <div>
+        <label class="field-label">Password</label>
+        <input type="password" name="password" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+      </div>
+      <button type="submit" class="btn-primary py-3.5 rounded-xl text-sm tracking-wide mt-2">Entrar</button>
+    </form>
+  </div>
+
+  <div class="text-center text-sm mt-5" style="color:var(--text-muted)">
+    Ainda não tens conta?
+    <a href="{{ url_for('auth.registo') }}" class="font-600" style="color:var(--accent-turf)">Cria o teu jogador</a>
+  </div>
+
+</div>
+
+{% endblock %}

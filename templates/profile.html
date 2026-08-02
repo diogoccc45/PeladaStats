@@ -1,0 +1,184 @@
+{% extends "base_app.html" %}
+{% block title %}{{ profile_user.nickname }} — PeladaStats{% endblock %}
+{% block page_title %}Perfil{% endblock %}
+{% block app_content %}
+
+<div class="px-5 pt-5">
+  <div class="hero-card rounded-2xl p-5">
+    <div class="flex items-start justify-between relative z-10">
+      <div>
+        <div class="ovr-badge font-display font-700 text-5xl leading-none" style="color:var(--accent-turf)">{{ profile_user.overall|round|int }}</div>
+        <div class="eyebrow mt-1">Overall {% if rank %}<span class="trend trend-flat">#{{ rank }} geral</span>{% endif %}</div>
+      </div>
+      <div class="w-16 h-16 rounded-xl portrait-slot flex items-center justify-center font-display font-700 text-xl" {% if profile_user.favorite_player_image_url %}style="background-image:url('{{ profile_user.favorite_player_image_url }}'); background-size:{{ (profile_user.favorite_player_image_zoom * 100)|round|int }}%; background-position:{{ profile_user.favorite_player_image_pos_x }}% {{ profile_user.favorite_player_image_pos_y }}%;"{% endif %}>
+        {% if not profile_user.favorite_player_image_url %}{{ profile_user.nickname[:2]|upper }}{% endif %}
+      </div>
+    </div>
+    <div class="relative z-10 mt-4">
+      <div class="font-display font-700 text-2xl">{{ profile_user.nickname }}</div>
+      <div class="text-xs mt-1" style="color:var(--text-muted)">
+        {{ summary.form.emoji }} {{ summary.form.label }}
+        {% if profile_user.preferred_foot %} · Pé {{ profile_user.preferred_foot }}{% endif %}
+      </div>
+    </div>
+    {% if profile_user.favorite_player_name or profile_user.favorite_team_name %}
+    <div class="relative z-10 flex items-center gap-4 mt-3 pt-3" style="border-top:1px solid var(--border-glass);">
+      {% if profile_user.favorite_player_name %}
+      <div class="text-xs" style="color:var(--text-muted)">Inspiração: <span style="color:var(--text-primary)" class="font-600">{{ profile_user.favorite_player_name }}</span></div>
+      {% endif %}
+      {% if profile_user.favorite_team_name %}
+      <div class="flex items-center gap-1.5 text-xs" style="color:var(--text-muted)">
+        {% if profile_user.favorite_team_logo_url %}<div class="w-4 h-4 rounded-full portrait-slot" style="background-image:url('{{ profile_user.favorite_team_logo_url }}'); background-size:{{ (profile_user.favorite_team_logo_zoom * 100)|round|int }}%; background-position:{{ profile_user.favorite_team_logo_pos_x }}% {{ profile_user.favorite_team_logo_pos_y }}%;"></div>{% endif %}
+        <span style="color:var(--text-primary)" class="font-600">{{ profile_user.favorite_team_name }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if is_me %}
+  <a href="{{ url_for('settings.definicoes') }}" class="btn-secondary block text-center mt-3 py-2.5 rounded-xl text-sm">Editar perfil</a>
+  {% else %}
+  <a href="{{ url_for('comparar.head_to_head', a=current_user.id, b=profile_user.id) }}" class="btn-secondary block text-center mt-3 py-2.5 rounded-xl text-sm">Comparar comigo</a>
+  {% endif %}
+</div>
+
+<div class="px-5 pt-6">
+  <div class="eyebrow mb-2">Estatísticas</div>
+  <div class="grid grid-cols-3 gap-2.5">
+    {% for label, value in [
+      ("Jogos", summary.games), ("Vitórias", summary.wins), ("Empates", summary.draws),
+      ("Derrotas", summary.losses), ("Golos", summary.goals), ("Assistências", summary.assists),
+      ("Part. Golo", summary.goal_involvements), ("MVP", summary.mvp)
+    ] %}
+    <div class="surface rounded-xl p-3 text-center">
+      <div class="font-display font-700 tabular text-xl">{{ value }}</div>
+      <div class="eyebrow mt-0.5">{{ label }}</div>
+    </div>
+    {% endfor %}
+    <div class="surface rounded-xl p-3 text-center">
+      <div class="font-display font-700 tabular text-xl">{{ "%.2f"|format(summary.avg_goals) }}</div>
+      <div class="eyebrow mt-0.5">Méd. Golos</div>
+    </div>
+    <div class="surface rounded-xl p-3 text-center">
+      <div class="font-display font-700 tabular text-xl">{{ "%.2f"|format(summary.avg_assists) }}</div>
+      <div class="eyebrow mt-0.5">Méd. Assist.</div>
+    </div>
+  </div>
+</div>
+
+<div class="px-5 pt-6">
+  <div class="eyebrow mb-2">Evolução</div>
+  <div class="surface rounded-2xl p-4 flex flex-col gap-5">
+    <div>
+      <div class="text-xs font-600 mb-1.5">Overall</div>
+      <div style="height:150px;"><canvas id="chartOverall"></canvas></div>
+    </div>
+    <div>
+      <div class="text-xs font-600 mb-1.5">Golos (acumulado)</div>
+      <div style="height:150px;"><canvas id="chartGoals"></canvas></div>
+    </div>
+    <div>
+      <div class="text-xs font-600 mb-1.5">Assistências (acumulado)</div>
+      <div style="height:150px;"><canvas id="chartAssists"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="px-5 pt-6 pb-6">
+  {% if next_achievement %}
+  <div class="eyebrow mb-2">Próxima conquista</div>
+  <div class="surface rounded-xl p-4 mb-4">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-600">{{ next_achievement.icon }} {{ next_achievement.label }}</span>
+      <span class="text-xs tabular" style="color:var(--text-muted)">{{ next_achievement.current }}/{{ next_achievement.threshold }}</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" style="width:{{ (next_achievement.ratio * 100)|round(1) }}%"></div>
+    </div>
+  </div>
+  {% endif %}
+  <div class="eyebrow mb-2">Conquistas</div>
+  <div class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
+    {% for a in achievements %}
+    <div class="achievement {{ '' if a.unlocked else 'locked' }}">
+      {% if not a.unlocked %}<span class="lock-badge">🔒</span>{% endif %}
+      <div class="icon">{{ a.icon }}</div>
+      <div class="text-[10px] font-600 leading-tight">{{ a.label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="px-5 pb-8">
+  <div class="eyebrow mb-2">Histórico de jogos</div>
+  {% if summary.timeline %}
+  <div class="flex flex-col gap-2">
+    {% for t in summary.timeline|reverse %}
+    <div class="surface rounded-xl px-4 py-3 flex items-center justify-between">
+      <div>
+        <div class="text-sm font-600">{{ t.date }}{% if t.location %} · {{ t.location }}{% endif %}</div>
+        <div class="text-xs mt-0.5 tabular" style="color:var(--text-muted)">⚽ {{ t.goals }} · 🎯 {{ t.assists }}{% if t.was_mvp %} · ⭐ MVP{% endif %}</div>
+      </div>
+      {% if t.result == 'win' %}
+        <span class="badge badge-confirmado">Vitória</span>
+      {% elif t.result == 'loss' %}
+        <span class="badge badge-erro">Derrota</span>
+      {% else %}
+        <span class="badge badge-pendente">Empate</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center text-sm py-6" style="color:var(--text-muted)">Ainda sem jogos confirmados.</div>
+  {% endif %}
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script>
+  const evolution = {{ evolution_json|safe }};
+
+  function lineChart(canvasId, series, color, roundValues){
+    const ctx = document.getElementById(canvasId);
+    const muted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: series.map(p => p.date),
+        datasets: [{
+          data: series.map(p => p.value),
+          borderColor: color,
+          backgroundColor: color + '22',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 2,
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: roundValues ? { callbacks: { label: (ctx) => Math.round(ctx.parsed.y) } } : {},
+        },
+        scales: {
+          x: { ticks: { color: muted, maxTicksLimit: 5, font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: muted, font: { size: 10 } }, grid: { color: 'rgba(150,162,192,0.12)' } },
+        }
+      }
+    });
+  }
+
+  if(evolution.overall.length){ lineChart('chartOverall', evolution.overall, '#6EE787', true); }
+  else { document.getElementById('chartOverall').replaceWith(Object.assign(document.createElement('div'), {className:'text-xs', style:'color:var(--text-muted)', textContent:'Ainda sem jogos confirmados.'})); }
+
+  if(evolution.goals.length){ lineChart('chartGoals', evolution.goals, '#F5B942', false); }
+  else { document.getElementById('chartGoals').replaceWith(Object.assign(document.createElement('div'), {className:'text-xs', style:'color:var(--text-muted)', textContent:'Ainda sem jogos confirmados.'})); }
+
+  if(evolution.assists.length){ lineChart('chartAssists', evolution.assists, '#7BA6FF', false); }
+  else { document.getElementById('chartAssists').replaceWith(Object.assign(document.createElement('div'), {className:'text-xs', style:'color:var(--text-muted)', textContent:'Ainda sem jogos confirmados.'})); }
+</script>
+
+{% endblock %}

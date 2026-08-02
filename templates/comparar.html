@@ -1,0 +1,56 @@
+{% extends "base_app.html" %}
+{% block title %}Comparar — PeladaStats{% endblock %}
+{% block page_title %}Comparar{% endblock %}
+{% block app_content %}
+
+<form method="GET" class="px-5 pt-5 grid grid-cols-2 gap-3">
+  <div>
+    <label class="field-label">Jogador A</label>
+    <select name="a" onchange="this.form.submit()" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+      <option value="">— escolhe —</option>
+      {% for u in users %}
+      <option value="{{ u.id }}" {{ 'selected' if player_a and player_a.id == u.id }}>{{ u.nickname }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="field-label">Jogador B</label>
+    <select name="b" onchange="this.form.submit()" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+      <option value="">— escolhe —</option>
+      {% for u in users %}
+      <option value="{{ u.id }}" {{ 'selected' if player_b and player_b.id == u.id }}>{{ u.nickname }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</form>
+
+{% if player_a and player_b %}
+<div class="px-5 pt-6 flex flex-col gap-2.5">
+  {% for label, key, unit in [
+    ("Jogos", "games", ""), ("Vitórias", "wins", ""), ("Derrotas", "losses", ""),
+    ("Golos", "goals", ""), ("Assistências", "assists", ""),
+    ("MVP", "mvp", ""), ("Participações em golo", "goal_involvements", "")
+  ] %}
+  {% set val_a = summary_a[key] %}
+  {% set val_b = summary_b[key] %}
+  {% set total = (val_a + val_b) if (val_a + val_b) > 0 else 1 %}
+  <div class="surface rounded-xl p-3.5">
+    <div class="eyebrow mb-1.5 text-center">{{ label }}</div>
+    <div class="flex items-center gap-2 text-sm font-display font-700">
+      <span class="w-8 text-right">{{ val_a }}</span>
+      <div class="flex-1 h-2 rounded-full overflow-hidden flex" style="background:var(--bg-surface-2)">
+        <div style="width:{{ (val_a/total*100)|round(1) }}%; background:var(--accent-turf)"></div>
+        <div style="width:{{ (val_b/total*100)|round(1) }}%; background:var(--accent-gold)"></div>
+      </div>
+      <span class="w-8">{{ val_b }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="px-5 pt-8 text-center text-sm" style="color:var(--text-muted)">
+  Escolhe dois jogadores para veres a comparação lado a lado.
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base_app.html" %}
+{% block title %}Jogo — PeladaStats{% endblock %}
+{% block page_title %}Jogo{% endblock %}
+{% block app_content %}
+
+<div class="px-5 pt-5">
+  <div class="surface rounded-2xl p-5">
+    <div class="flex items-center justify-between">
+      <div class="font-display font-700 text-3xl tabular">{{ match.team_a_score }} — {{ match.team_b_score }}</div>
+      {% if match.status == 'confirmado' %}
+        <span class="badge badge-confirmado">Confirmado</span>
+      {% else %}
+        <span class="badge badge-pendente">Pendente</span>
+      {% endif %}
+    </div>
+    <div class="text-xs mt-1.5" style="color:var(--text-muted)">{{ match.match_date }}{% if match.location %} · {{ match.location }}{% endif %}</div>
+  </div>
+</div>
+
+{% if my_row and match.status != 'confirmado' %}
+<div class="px-5 mt-5">
+  <div class="flex items-center justify-between mb-2">
+    <div class="eyebrow">{{ 'Corrigir as tuas stats' if my_row.submitted else 'As tuas stats neste jogo' }}</div>
+    <span class="badge {{ 'badge-confirmado' if my_row.team == 'A' else 'badge-pendente' }}">Estás na Equipa {{ my_row.team }}</span>
+  </div>
+  {% if my_row.submitted %}
+  <div class="text-xs mb-2" style="color:var(--text-muted)">Já enviaste — podes corrigir enquanto o jogo estiver pendente.</div>
+  {% endif %}
+  <form method="POST" class="surface rounded-2xl p-5 flex flex-col gap-4">
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="field-label">⚽ Golos</label>
+        <input type="number" min="0" name="goals" value="{{ my_row.goals }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+      </div>
+      <div>
+        <label class="field-label">🎯 Assistências</label>
+        <input type="number" min="0" name="assists" value="{{ my_row.assists }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+      </div>
+    </div>
+    <div>
+      <label class="field-label">⭐ Voto de MVP</label>
+      <select name="mvp_vote_for" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+        <option value="">— sem voto —</option>
+        {% for o in others %}
+        <option value="{{ o.user_id }}" {{ 'selected' if my_row.mvp_vote_for == o.user_id }}>{{ o.nickname }} (Equipa {{ o.team }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-primary py-3 rounded-xl text-sm tracking-wide">{{ 'Guardar correção' if my_row.submitted else 'Guardar as minhas stats' }}</button>
+  </form>
+</div>
+{% endif %}
+
+{% for team_letter in ['A', 'B'] %}
+<div class="px-5 mt-5">
+  <div class="eyebrow mb-2">Equipa {{ team_letter }}</div>
+  <div class="flex flex-col gap-2">
+    {% for r in rows if r.team == team_letter %}
+    <div class="surface rounded-xl px-4 py-3 flex items-center justify-between">
+      <span class="font-600 text-sm">{{ r.nickname }}{% if my_row and r.user_id == my_row.user_id %} (tu){% endif %}</span>
+      <div class="flex items-center gap-3 text-sm">
+        {% if r.submitted %}
+          <span class="tabular" style="color:var(--text-muted)">⚽ {{ r.goals }} · 🎯 {{ r.assists }}</span>
+          <span class="badge badge-confirmado">✓</span>
+        {% else %}
+          <span class="badge badge-pendente">A aguardar</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

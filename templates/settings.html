@@ -1,0 +1,214 @@
+{% extends "base_app.html" %}
+{% block title %}Definições — PeladaStats{% endblock %}
+{% block page_title %}Definições{% endblock %}
+{% block app_content %}
+
+<div class="px-5 pt-5">
+  <div class="eyebrow mb-2">Aparência</div>
+  <div class="surface rounded-xl p-4 flex items-center justify-between">
+    <div>
+      <div class="font-600 text-sm">Modo claro</div>
+      <div class="text-xs mt-0.5" style="color:var(--text-muted)">Fica guardado neste dispositivo.</div>
+    </div>
+    <div class="switch" id="themeSwitch" role="button" aria-label="Alternar modo claro/escuro">
+      <div class="knob"></div>
+    </div>
+  </div>
+</div>
+
+<form method="POST" class="px-5 pt-6 flex flex-col gap-4 pb-10">
+  <div class="eyebrow">O teu jogador</div>
+
+  <div>
+    <label class="field-label">Alcunha</label>
+    <input type="text" name="nickname" value="{{ user.nickname }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+  </div>
+
+  <div>
+    <label class="field-label">Pé preferido</label>
+    <div class="grid grid-cols-3 gap-2 mt-1.5" id="footGroup">
+      {% for f in ["Esquerdo", "Direito", "Ambidestro"] %}
+      <button type="button" class="foot-btn py-2.5 rounded-xl {{ 'selected' if user.preferred_foot == f|lower }}" data-foot="{{ f }}">{{ f }}</button>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="foot" id="footInput" value="{{ user.preferred_foot }}">
+  </div>
+
+  <div class="eyebrow mt-2">Inspiração</div>
+
+  <div>
+    <label class="field-label">Jogador de futebol preferido</label>
+    <input type="text" name="favPlayer" value="{{ user.favorite_player_name or '' }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+  </div>
+
+  <div>
+    <label class="field-label">URL da foto do jogador</label>
+    <input type="text" name="favPlayerImg" id="favPlayerImgInput" value="{{ user.favorite_player_image_url or '' }}" placeholder="https://..." class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+    <div class="flex items-start gap-4 mt-3">
+      <div class="cropper-box" id="favPlayerImgCropper" style="background-image:url('{{ user.favorite_player_image_url or '' }}'); background-size:{{ (user.favorite_player_image_zoom * 100)|round|int }}%; background-position:{{ user.favorite_player_image_pos_x }}% {{ user.favorite_player_image_pos_y }}%;"></div>
+      <div class="flex-1 flex flex-col gap-2 pt-1">
+        <span class="text-xs" id="favPlayerImgStatus" style="color:var(--accent-danger)"></span>
+        <label class="field-label">Zoom</label>
+        <input type="range" min="100" max="300" value="{{ (user.favorite_player_image_zoom * 100)|round|int }}" class="cropper-zoom" id="favPlayerImgZoomSlider">
+        <button type="button" class="text-xs text-left" style="color:var(--text-muted)" id="favPlayerImgReset">↺ Repor enquadramento</button>
+      </div>
+    </div>
+    <input type="hidden" name="favPlayerImgZoom" id="favPlayerImgZoomInput" value="{{ user.favorite_player_image_zoom }}">
+    <input type="hidden" name="favPlayerImgPosX" id="favPlayerImgPosXInput" value="{{ user.favorite_player_image_pos_x }}">
+    <input type="hidden" name="favPlayerImgPosY" id="favPlayerImgPosYInput" value="{{ user.favorite_player_image_pos_y }}">
+  </div>
+
+  <div>
+    <label class="field-label">Equipa preferida</label>
+    <input type="text" name="favTeam" value="{{ user.favorite_team_name or '' }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+  </div>
+
+  <div>
+    <label class="field-label">URL do logo da equipa</label>
+    <input type="text" name="favTeamLogo" id="favTeamLogoInput" value="{{ user.favorite_team_logo_url or '' }}" placeholder="https://..." class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+    <div class="flex items-start gap-4 mt-3">
+      <div class="cropper-box round" id="favTeamLogoCropper" style="background-image:url('{{ user.favorite_team_logo_url or '' }}'); background-size:{{ (user.favorite_team_logo_zoom * 100)|round|int }}%; background-position:{{ user.favorite_team_logo_pos_x }}% {{ user.favorite_team_logo_pos_y }}%;"></div>
+      <div class="flex-1 flex flex-col gap-2 pt-1">
+        <span class="text-xs" id="favTeamLogoStatus" style="color:var(--accent-danger)"></span>
+        <label class="field-label">Zoom</label>
+        <input type="range" min="100" max="300" value="{{ (user.favorite_team_logo_zoom * 100)|round|int }}" class="cropper-zoom" id="favTeamLogoZoomSlider">
+        <button type="button" class="text-xs text-left" style="color:var(--text-muted)" id="favTeamLogoReset">↺ Repor enquadramento</button>
+      </div>
+    </div>
+    <input type="hidden" name="favTeamLogoZoom" id="favTeamLogoZoomInput" value="{{ user.favorite_team_logo_zoom }}">
+    <input type="hidden" name="favTeamLogoPosX" id="favTeamLogoPosXInput" value="{{ user.favorite_team_logo_pos_x }}">
+    <input type="hidden" name="favTeamLogoPosY" id="favTeamLogoPosYInput" value="{{ user.favorite_team_logo_pos_y }}">
+  </div>
+
+  <button type="submit" class="btn-primary py-3.5 rounded-xl text-sm tracking-wide mt-2">Guardar alterações</button>
+</form>
+
+<script>
+  document.querySelectorAll('#footGroup .foot-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#footGroup .foot-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('footInput').value = btn.dataset.foot;
+    });
+  });
+
+  function wireCropper(opts){
+    const urlInput = document.getElementById(opts.inputId);
+    const box = document.getElementById(opts.boxId);
+    const zoomSlider = document.getElementById(opts.zoomSliderId);
+    const zoomInput = document.getElementById(opts.zoomInputId);
+    const posXInput = document.getElementById(opts.posXInputId);
+    const posYInput = document.getElementById(opts.posYInputId);
+    const status = document.getElementById(opts.statusId);
+    const resetBtn = document.getElementById(opts.resetId);
+
+    let state = {
+      zoom: parseFloat(zoomInput.value) || 1,
+      x: parseFloat(posXInput.value) || 50,
+      y: parseFloat(posYInput.value) || 50,
+    };
+    let knownUrl = urlInput.value.trim();
+
+    function applyStyle(){
+      box.style.backgroundSize = (state.zoom * 100) + '%';
+      box.style.backgroundPosition = state.x + '% ' + state.y + '%';
+      zoomInput.value = state.zoom.toFixed(2);
+      posXInput.value = state.x.toFixed(1);
+      posYInput.value = state.y.toFixed(1);
+    }
+
+    function loadImage(){
+      const url = urlInput.value.trim();
+      if(!url){ box.style.backgroundImage = ''; status.textContent = ''; return; }
+      const img = new Image();
+      img.onload = () => { if(urlInput.value.trim() === url){ box.style.backgroundImage = `url('${url}')`; status.textContent = ''; } };
+      img.onerror = () => { if(urlInput.value.trim() === url){ box.style.backgroundImage = ''; status.textContent = 'Link inválido ou imagem não encontrada'; } };
+      img.src = url;
+    }
+
+    function resetFraming(){
+      state = { zoom: 1, x: 50, y: 50 };
+      zoomSlider.value = 100;
+      applyStyle();
+    }
+
+    urlInput.addEventListener('input', () => {
+      const url = urlInput.value.trim();
+      if(url !== knownUrl){ resetFraming(); knownUrl = url; }
+      loadImage();
+    });
+
+    zoomSlider.addEventListener('input', () => {
+      state.zoom = zoomSlider.value / 100;
+      applyStyle();
+    });
+
+    resetBtn.addEventListener('click', resetFraming);
+
+    let dragging = false;
+    let start = { x: 0, y: 0 };
+    let startPos = { x: 50, y: 50 };
+
+    function pointerPos(e){ return e.touches ? e.touches[0] : e; }
+
+    function pointerDown(e){
+      dragging = true;
+      const p = pointerPos(e);
+      start = { x: p.clientX, y: p.clientY };
+      startPos = { x: state.x, y: state.y };
+    }
+    function pointerMove(e){
+      if(!dragging) return;
+      const p = pointerPos(e);
+      const rect = box.getBoundingClientRect();
+      const dx = p.clientX - start.x;
+      const dy = p.clientY - start.y;
+      state.x = Math.max(0, Math.min(100, startPos.x - (dx / rect.width) * 100));
+      state.y = Math.max(0, Math.min(100, startPos.y - (dy / rect.height) * 100));
+      applyStyle();
+      if(e.cancelable) e.preventDefault();
+    }
+    function pointerUp(){ dragging = false; }
+
+    box.addEventListener('mousedown', pointerDown);
+    window.addEventListener('mousemove', pointerMove);
+    window.addEventListener('mouseup', pointerUp);
+    box.addEventListener('touchstart', pointerDown, { passive: true });
+    window.addEventListener('touchmove', pointerMove, { passive: false });
+    window.addEventListener('touchend', pointerUp);
+
+    applyStyle();
+    loadImage();
+  }
+
+  wireCropper({
+    inputId: 'favPlayerImgInput', boxId: 'favPlayerImgCropper', zoomSliderId: 'favPlayerImgZoomSlider',
+    zoomInputId: 'favPlayerImgZoomInput', posXInputId: 'favPlayerImgPosXInput', posYInputId: 'favPlayerImgPosYInput',
+    statusId: 'favPlayerImgStatus', resetId: 'favPlayerImgReset',
+  });
+  wireCropper({
+    inputId: 'favTeamLogoInput', boxId: 'favTeamLogoCropper', zoomSliderId: 'favTeamLogoZoomSlider',
+    zoomInputId: 'favTeamLogoZoomInput', posXInputId: 'favTeamLogoPosXInput', posYInputId: 'favTeamLogoPosYInput',
+    statusId: 'favTeamLogoStatus', resetId: 'favTeamLogoReset',
+  });
+
+  const themeSwitch = document.getElementById('themeSwitch');
+  function syncSwitch(){
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    themeSwitch.classList.toggle('on', isLight);
+  }
+  themeSwitch.addEventListener('click', ()=>{
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if(isLight){
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('peladastats-theme', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('peladastats-theme', 'light');
+    }
+    syncSwitch();
+  });
+  syncSwitch();
+</script>
+
+{% endblock %}

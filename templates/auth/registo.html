@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Criar conta — PeladaStats{% endblock %}
+{% block content %}
+
+<div class="max-w-md mx-auto min-h-screen flex flex-col px-5 pt-6 pb-10">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:linear-gradient(135deg, var(--accent-turf), var(--accent-turf-dim));">
+        <span class="font-display font-700 text-xs text-[#0A0E17]">P</span>
+      </div>
+      <span class="font-display font-700 text-base tracking-wide">PELADA<span style="color:var(--accent-turf)">STATS</span></span>
+    </div>
+    <span class="text-xs font-display font-600" style="color:var(--text-muted)" id="stepLabel">Passo 1 de 3</span>
+  </div>
+
+  <!-- Step dots + progress -->
+  <div class="flex items-center gap-2 mb-6">
+    <div class="step-dot active" id="dot1">1</div>
+    <div class="flex-1 h-[2px] step-track rounded-full overflow-hidden"><div class="step-fill h-full" id="line1" style="width:0%"></div></div>
+    <div class="step-dot" id="dot2">2</div>
+    <div class="flex-1 h-[2px] step-track rounded-full overflow-hidden"><div class="step-fill h-full" id="line2" style="width:0%"></div></div>
+    <div class="step-dot" id="dot3">3</div>
+  </div>
+
+  <!-- Live card preview -->
+  <div class="preview-card rounded-2xl p-4 mb-6">
+    <div class="flex items-start justify-between relative z-10">
+      <div>
+        <div class="font-display font-700 text-4xl leading-none" style="color:var(--accent-turf)">75</div>
+        <div class="text-[10px] uppercase tracking-widest font-display font-600 mt-0.5" style="color:var(--text-muted)">Overall inicial</div>
+      </div>
+      <div class="w-14 h-14 rounded-xl portrait-slot flex items-center justify-center font-display font-700 text-lg" id="portraitSlot">?</div>
+    </div>
+    <div class="relative z-10 mt-3">
+      <div class="font-display font-700 text-xl" id="previewName">O teu jogador</div>
+      <div class="flex items-center gap-2 text-xs mt-1" style="color:var(--text-muted)" id="previewFoot">Pé preferido por definir</div>
+    </div>
+    <div class="relative z-10 flex items-center gap-2 mt-3 pt-3" style="border-top:1px solid var(--border-glass);">
+      <div class="w-6 h-6 rounded-full portrait-slot" id="teamLogoSlot"></div>
+      <span class="text-xs" style="color:var(--text-muted)" id="previewTeam">Equipa preferida por definir</span>
+    </div>
+  </div>
+
+  <!-- Form steps -->
+  <form id="wizardForm" method="POST" action="{{ url_for('auth.registo') }}" class="flex-1 flex flex-col">
+
+    <!-- Step 1: Conta -->
+    <div class="step-panel flex flex-col gap-4" data-step="1">
+      <div>
+        <div class="font-display font-700 text-lg mb-1">Cria a tua conta</div>
+        <div class="text-sm" style="color:var(--text-muted)">Só precisas de um username e password — sem emails.</div>
+      </div>
+      <div>
+        <label class="field-label">Username</label>
+        <input type="text" id="username" name="username" value="{{ form.get('username', '') }}" placeholder="ex: rafa10" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      </div>
+      <div>
+        <label class="field-label">Password</label>
+        <input type="password" id="password" name="password" placeholder="mínimo 4 caracteres" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+      </div>
+    </div>
+
+    <!-- Step 2: Perfil -->
+    <div class="step-panel hidden flex-col gap-4" data-step="2">
+      <div>
+        <div class="font-display font-700 text-lg mb-1">O teu jogador</div>
+        <div class="text-sm" style="color:var(--text-muted)">Como é que os outros te vão ver no leaderboard.</div>
+      </div>
+      <div>
+        <label class="field-label">Alcunha</label>
+        <input type="text" id="nickname" name="nickname" value="{{ form.get('nickname', '') }}" placeholder="ex: Rafa" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      </div>
+      <div>
+        <label class="field-label">Pé preferido</label>
+        <div class="grid grid-cols-3 gap-2 mt-1.5">
+          <button type="button" class="foot-btn py-2.5 rounded-xl" data-foot="Esquerdo">Esquerdo</button>
+          <button type="button" class="foot-btn py-2.5 rounded-xl" data-foot="Direito">Direito</button>
+          <button type="button" class="foot-btn py-2.5 rounded-xl" data-foot="Ambidestro">Ambidestro</button>
+        </div>
+        <input type="hidden" id="foot" name="foot" value="{{ form.get('foot', '') }}">
+      </div>
+    </div>
+
+    <!-- Step 3: Inspiração -->
+    <div class="step-panel hidden flex-col gap-4" data-step="3">
+      <div>
+        <div class="font-display font-700 text-lg mb-1">A tua inspiração</div>
+        <div class="text-sm" style="color:var(--text-muted)">Cola os links das imagens — sem uploads.</div>
+      </div>
+      <div>
+        <label class="field-label">Jogador de futebol preferido</label>
+        <input type="text" id="favPlayer" name="favPlayer" value="{{ form.get('favPlayer', '') }}" placeholder="ex: Cristiano Ronaldo" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      </div>
+      <div>
+        <label class="field-label">URL da foto do jogador</label>
+        <input type="text" id="favPlayerImg" name="favPlayerImg" value="{{ form.get('favPlayerImg', '') }}" placeholder="https://..." class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      </div>
+      <div>
+        <label class="field-label">Equipa preferida</label>
+        <input type="text" id="favTeam" name="favTeam" value="{{ form.get('favTeam', '') }}" placeholder="ex: FC Porto" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      </div>
+      <div>
+        <label class="field-label">URL do logo da equipa</label>
+        <input type="text" id="favTeamLogo" name="favTeamLogo" value="{{ form.get('favTeamLogo', '') }}" placeholder="https://..." class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Nav buttons -->
+    <div class="flex items-center gap-3 mt-6">
+      <button type="button" id="backBtn" class="hidden font-display font-600 text-sm px-4 py-3" style="color:var(--text-muted)">Voltar</button>
+      <button type="button" id="nextBtn" class="btn-primary flex-1 py-3.5 rounded-xl text-sm tracking-wide">Continuar</button>
+    </div>
+  </form>
+
+</div>
+
+<script>
+  let step = 1;
+  const total = 3;
+  const state = { nickname:"", foot:"{{ form.get('foot', '') }}", favPlayerImg:"{{ form.get('favPlayerImg', '') }}", favTeam:"{{ form.get('favTeam', '') }}", favTeamLogo:"{{ form.get('favTeamLogo', '') }}" };
+
+  const dots = { 1: document.getElementById('dot1'), 2: document.getElementById('dot2'), 3: document.getElementById('dot3') };
+  const lines = { 1: document.getElementById('line1'), 2: document.getElementById('line2') };
+  const panels = document.querySelectorAll('.step-panel');
+  const stepLabel = document.getElementById('stepLabel');
+  const backBtn = document.getElementById('backBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const wizardForm = document.getElementById('wizardForm');
+
+  function initials(name){
+    if(!name) return "?";
+    return name.trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+  }
+
+  function updatePreview(){
+    document.getElementById('previewName').textContent = state.nickname || "O teu jogador";
+    document.getElementById('previewFoot').textContent = state.foot ? `Pé ${state.foot.toLowerCase()}` : "Pé preferido por definir";
+
+    const portrait = document.getElementById('portraitSlot');
+    if(state.favPlayerImg){
+      portrait.style.backgroundImage = `url('${state.favPlayerImg}')`;
+      portrait.textContent = "";
+    } else {
+      portrait.style.backgroundImage = "";
+      portrait.textContent = initials(state.nickname);
+    }
+
+    document.getElementById('previewTeam').textContent = state.favTeam || "Equipa preferida por definir";
+    const teamLogo = document.getElementById('teamLogoSlot');
+    teamLogo.style.backgroundImage = state.favTeamLogo ? `url('${state.favTeamLogo}')` : "";
+  }
+
+  function syncStateFromInputs(){
+    state.nickname = document.getElementById('nickname').value;
+    state.favPlayerImg = document.getElementById('favPlayerImg').value;
+    state.favTeam = document.getElementById('favTeam').value;
+    state.favTeamLogo = document.getElementById('favTeamLogo').value;
+  }
+
+  document.querySelectorAll('.foot-btn').forEach(btn=>{
+    if(btn.dataset.foot === state.foot){ btn.classList.add('selected'); }
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.foot-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.foot = btn.dataset.foot;
+      document.getElementById('foot').value = btn.dataset.foot;
+      updatePreview();
+      validateStep();
+    });
+  });
+
+  ['username','password','nickname','favPlayer','favPlayerImg','favTeam','favTeamLogo'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', ()=>{ syncStateFromInputs(); updatePreview(); validateStep(); });
+  });
+
+  function validateStep(){
+    let ok = true;
+    if(step === 1) ok = document.getElementById('username').value.trim().length >= 3 && document.getElementById('password').value.trim().length >= 4;
+    if(step === 2) ok = state.nickname.trim().length >= 2 && state.foot !== "";
+    if(step === 3) ok = true;
+    nextBtn.disabled = !ok;
+    return ok;
+  }
+
+  function renderStep(){
+    panels.forEach(p=>{
+      const isActive = Number(p.dataset.step) === step;
+      p.classList.toggle('hidden', !isActive);
+      p.classList.toggle('flex', isActive);
+    });
+    stepLabel.textContent = `Passo ${step} de ${total}`;
+    [1,2,3].forEach(n=>{
+      dots[n].classList.remove('active','done');
+      dots[n].textContent = n;
+      if(n < step){ dots[n].classList.add('done'); dots[n].textContent = "✓"; }
+      if(n === step){ dots[n].classList.add('active'); }
+    });
+    lines[1].style.width = step > 1 ? "100%" : "0%";
+    lines[2].style.width = step > 2 ? "100%" : "0%";
+    backBtn.classList.toggle('hidden', step === 1);
+    nextBtn.textContent = step === total ? "Criar perfil" : "Continuar";
+    nextBtn.type = step === total ? "submit" : "button";
+    validateStep();
+  }
+
+  nextBtn.addEventListener('click', (e)=>{
+    if(step < total){
+      if(!validateStep()) return;
+      e.preventDefault();
+      step++;
+      renderStep();
+    }
+    // no último passo, o botão é type="submit": o form submete-se sozinho para o Flask
+  });
+
+  backBtn.addEventListener('click', ()=>{
+    if(step > 1){ step--; renderStep(); }
+  });
+
+  syncStateFromInputs();
+  renderStep();
+  updatePreview();
+</script>
+
+{% endblock %}
