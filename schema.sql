@@ -23,7 +23,7 @@ CREATE TABLE users (
     favorite_team_logo_pos_y REAL NOT NULL DEFAULT 50,
     -- Overall persiste aqui porque é cumulativo (sobe/desce jogo a jogo);
     -- não é recalculado do zero a partir do histórico, é atualizado incrementalmente.
-    overall REAL NOT NULL DEFAULT 75,
+    overall REAL NOT NULL DEFAULT 65,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -5,7 +5,7 @@ import click
 from flask import current_app, g
 from werkzeug.security import generate_password_hash
 
-from overall_engine import apply_overall_updates
+from overall_engine import OVERALL_START, apply_overall_updates
 
 
 def get_db():
@@ -84,8 +84,8 @@ def seed_demo_command():
             INSERT INTO users (
                 username, password_hash, nickname, preferred_foot,
                 favorite_player_name, favorite_player_image_url,
-                favorite_team_name, favorite_team_logo_url
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                favorite_team_name, favorite_team_logo_url, overall
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 u["username"],
@@ -96,6 +96,7 @@ def seed_demo_command():
                 u["favorite_player_image_url"],
                 u["favorite_team_name"],
                 u["favorite_team_logo_url"],
+                OVERALL_START,
             ),
         )
         user_ids[u["username"]] = cur.lastrowid

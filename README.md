@@ -38,7 +38,7 @@ honest self-reporting is enough. Players can correct their own entry until
 the match confirms, after which it locks. Confirmed matches show a
 "Match Facts" panel (MVP + top scorer).
 
-**Overall rating engine** (`overall_engine.py`) — every player starts at 75.
+**Overall rating engine** (`overall_engine.py`) — every player starts at 65.
 Per confirmed match: win +0.20, goal +0.15 each, assist +0.10 each, match
 MVP +0.30 (ties in the vote count award nobody); loss -0.20, a goalless/
 assistless game -0.15, zero MVP votes received -0.10. Positive deltas only
@@ -121,6 +121,3 @@ reactivating brings it straight back).
 - No way to edit or delete a mistakenly-created match yet.
 - No pagination — irrelevant at this group's scale, but would matter if it
   ever grew a lot.
-
-
-Note📝: Made with Claude Sonnet 4.5 Medium Effort :)

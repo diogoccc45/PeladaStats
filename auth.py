@@ -4,6 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import get_db
 from models import User
+from overall_engine import OVERALL_START
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -49,8 +50,8 @@ def registo():
             INSERT INTO users (
                 username, password_hash, nickname, preferred_foot,
                 favorite_player_name, favorite_player_image_url,
-                favorite_team_name, favorite_team_logo_url
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                favorite_team_name, favorite_team_logo_url, overall
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 username,
@@ -61,6 +62,7 @@ def registo():
                 fav_player_img or None,
                 fav_team or None,
                 fav_team_logo or None,
+                OVERALL_START,
             ),
         )
         db.commit()

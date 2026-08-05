@@ -32,7 +32,7 @@ from collections import Counter
 
 OVERALL_MIN = 50
 OVERALL_MAX = 99
-OVERALL_START = 75
+OVERALL_START = 65
 
 WIN_BONUS = 0.20
 GOAL_BONUS = 0.15
