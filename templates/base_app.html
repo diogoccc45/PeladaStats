@@ -11,7 +11,10 @@
         </div>
         <span class="font-display font-700 text-base tracking-wide">PELADA<span style="color:var(--accent-turf)">STATS</span></span>
       </div>
-      <span class="text-xs font-600" style="color:var(--text-muted)">{{ current_user.nickname }}</span>
+      <div class="flex items-center gap-2.5">
+        <span class="text-xs font-600" style="color:var(--text-muted)">{{ current_user.nickname }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="text-sm" style="color:var(--accent-danger)" title="Sair" aria-label="Sair">⏻</a>
+      </div>
     </header>
 
     <div class="tabbar-wrap">

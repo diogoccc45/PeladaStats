@@ -35,6 +35,8 @@ CREATE TABLE matches (
     team_b_score INTEGER NOT NULL,
     -- Pendente até a soma dos golos por jogador bater certo com o resultado e o MVP ser válido.
     status TEXT NOT NULL DEFAULT 'pendente' CHECK(status IN ('pendente', 'confirmado')),
+    -- Who created this match — only they can delete it, and only while pendente.
+    created_by INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

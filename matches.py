@@ -98,10 +98,10 @@ def novo():
 
         cur = db.execute(
             """
-            INSERT INTO matches (match_date, location, team_a_score, team_b_score, status)
-            VALUES (?, ?, ?, ?, 'pendente')
+            INSERT INTO matches (match_date, location, team_a_score, team_b_score, status, created_by)
+            VALUES (?, ?, ?, ?, 'pendente', ?)
             """,
-            (match_date, location or None, team_a_score, team_b_score),
+            (match_date, location or None, team_a_score, team_b_score, int(current_user.get_id())),
         )
         match_id = cur.lastrowid
 
@@ -191,3 +191,28 @@ def detalhe(match_id):
         "matches/detalhe.html",
         match=match, rows=rows, my_row=my_row, others=others,
     )
+
+
+@bp.route("/<int:match_id>/apagar", methods=["POST"])
+@login_required
+def apagar(match_id):
+    db = get_db()
+    match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    if match is None:
+        abort(404)
+
+    if match["created_by"] != int(current_user.get_id()):
+        abort(403)
+
+    # Confirmed matches are locked: they've already fed the Overall engine,
+    # and unwinding that safely would mean recalculating every match after
+    # this one (the difficulty multiplier depends on each player's Overall
+    # at the time). Simplest and safest is to just not allow it.
+    if match["status"] == "confirmado":
+        flash("Não é possível apagar um jogo já confirmado.")
+        return redirect(url_for("matches.detalhe", match_id=match_id))
+
+    db.execute("DELETE FROM matches WHERE id = ?", (match_id,))
+    db.commit()
+    flash("Jogo apagado.")
+    return redirect(url_for("matches.lista"))

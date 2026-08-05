@@ -15,6 +15,13 @@
     </div>
     <div class="text-xs mt-1.5" style="color:var(--text-muted)">{{ match.match_date }}{% if match.location %} · {{ match.location }}{% endif %}</div>
   </div>
+
+  {% if match.created_by == current_user.id and match.status != 'confirmado' %}
+  <form method="POST" action="{{ url_for('matches.apagar', match_id=match.id) }}" class="mt-2.5"
+        onsubmit="return confirm('Apagar este jogo? Não há como desfazer.');">
+    <button type="submit" class="btn-danger w-full py-2.5 rounded-xl text-sm">🗑 Apagar jogo</button>
+  </form>
+  {% endif %}
 </div>
 
 {% if my_row and match.status != 'confirmado' %}
