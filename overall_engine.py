@@ -1,19 +1,25 @@
 """
-Motor do Overall.
-
-Regras (ajustadas a pedido do Diogo — os valores negativos e o bónus de MVP
-do brief original pareciam demasiado pesados):
+Overall rating engine.
+  - Roughly doubles/triples the weight of match RESULT (win/loss) relative
+    to individual stats, so playing for the team win matters more than
+    chasing personal numbers.
+  - Raises the minimum floor, since losses now hurt more.
+  - Adds a milestone bonus (see RECORD_BONUS) for setting a new global
+    record or unlocking a new achievement, on top of the normal per-match
+    deltas — handled in stats.compute_milestone_bonuses(), passed in here
+    as bonus_by_user so this module doesn't need to import stats.py (would
+    be a circular import — stats.py already imports from this module).
 
 Positivas, por jogador, por jogo:
-    Vitória:      +0.20
+    Vitória:      +0.40
     Golo:         +0.15 x golos marcados
-    Assistência:  +0.10 x assistências
+    Assistência:  +0.12 x assistências
     MVP do jogo:  +0.30  (quem tiver mais votos nesse jogo; empates -> ninguém recebe o bónus)
 
 Negativas:
-    Derrota:                          -0.20
+    Derrota:                          -0.35
     Sem golo nem assistência no jogo: -0.15
-    Zero votos de MVP no jogo:        -0.10
+    Zero votos de MVP no jogo:        -0.05
 
 Dificuldade progressiva (aplicada ao TOTAL DAS POSITIVAS, com base no Overall
 ANTES do jogo). As negativas aplicam-se sempre a 100% — não faria sentido um
@@ -25,23 +31,24 @@ jogador em alta ter as suas más exibições "protegidas" pelo multiplicador:
     91-95  -> x0.40
     96-99  -> x0.20
 
-Overall final fica sempre entre 50 e 99.
+Overall final fica sempre entre 55 e 99 (o mínimo subiu de 50 para 55 —
+com a derrota agora a pesar mais, faz sentido um travão mais alto).
 """
 
 from collections import Counter
 
-OVERALL_MIN = 50
+OVERALL_MIN = 55
 OVERALL_MAX = 99
 OVERALL_START = 65
 
-WIN_BONUS = 0.20
+WIN_BONUS = 0.40
 GOAL_BONUS = 0.15
-ASSIST_BONUS = 0.10
+ASSIST_BONUS = 0.12
 MVP_BONUS = 0.30
 
-LOSS_PENALTY = -0.20
+LOSS_PENALTY = -0.35
 QUIET_GAME_PENALTY = -0.15
-ZERO_VOTES_PENALTY = -0.10
+ZERO_VOTES_PENALTY = -0.05
 
 
 def difficulty_multiplier(overall_before):
@@ -82,12 +89,19 @@ def compute_match_mvps(stat_rows):
     return {top_scorers[0]}
 
 
-def apply_overall_updates(db, match_id):
+def apply_overall_updates(db, match_id, bonus_by_user=None):
     """
     Aplica os deltas de Overall a todos os participantes de um jogo confirmado.
     Grava o novo Overall em users e um registo em overall_history.
+
+    bonus_by_user: {user_id: pontos extra}, opcional — bónus de recorde/conquista
+    (RECORD_BONUS, calculado em stats.compute_milestone_bonuses) somado ao
+    delta normal, sem multiplicador de dificuldade, antes de aplicar o clamp.
+
     Devolve uma lista de dicts com o detalhe do cálculo (útil para testes/depuração).
     """
+    bonus_by_user = bonus_by_user or {}
+
     match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
     stat_rows = db.execute(
         "SELECT * FROM match_stats WHERE match_id = ?", (match_id,)
@@ -123,7 +137,8 @@ def apply_overall_updates(db, match_id):
         user = db.execute("SELECT overall FROM users WHERE id = ?", (row["user_id"],)).fetchone()
         overall_before = user["overall"]
         multiplier = difficulty_multiplier(overall_before)
-        delta = positive * multiplier + negative
+        bonus = bonus_by_user.get(row["user_id"], 0)
+        delta = positive * multiplier + negative + bonus
         overall_after = max(OVERALL_MIN, min(OVERALL_MAX, overall_before + delta))
 
         db.execute("UPDATE users SET overall = ? WHERE id = ?", (overall_after, row["user_id"]))
@@ -139,6 +154,7 @@ def apply_overall_updates(db, match_id):
                 "positive": positive,
                 "negative": negative,
                 "multiplier": multiplier,
+                "bonus": bonus,
                 "delta": delta,
                 "overall_before": overall_before,
                 "overall_after": overall_after,

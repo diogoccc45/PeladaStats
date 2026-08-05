@@ -18,6 +18,11 @@ FORM_LEVELS = [
     (0.0, "Péssima", "🔴"),
 ]
 
+# Extra Overall points awarded once, the match a player sets a new global
+# record (Recordes page) or unlocks a new achievement — a flat, unscaled
+# bonus, same spirit as the match-result penalties: always full strength.
+RECORD_BONUS = 1.0
+
 ACHIEVEMENTS = [
     {"id": "primeiro_golo", "label": "Primeiro golo", "icon": "⚽", "check": lambda s: s["goals"] >= 1},
     {"id": "primeira_assistencia", "label": "Primeira assistência", "icon": "🎯", "check": lambda s: s["assists"] >= 1},
@@ -28,6 +33,7 @@ ACHIEVEMENTS = [
     {"id": "25_assistencias", "label": "25 assistências", "icon": "🎯", "check": lambda s: s["assists"] >= 25, "metric": "assists", "threshold": 25},
     {"id": "10_vitorias", "label": "10 vitórias", "icon": "🏆", "check": lambda s: s["wins"] >= 10, "metric": "wins", "threshold": 10},
     {"id": "hat_trick", "label": "Hat-trick", "icon": "🎩", "check": lambda s: s["hat_trick"]},
+    {"id": "poquer", "label": "Póquer", "icon": "🃏", "check": lambda s: s["poker"]},
     {"id": "100_participacoes", "label": "100 participações em golo", "icon": "🔥", "check": lambda s: s["goal_involvements"] >= 100, "metric": "goal_involvements", "threshold": 100},
 ]
 
@@ -42,13 +48,17 @@ def _result_for(row, match):
     return "loss"
 
 
-def get_confirmed_matches_with_stats(db):
-    """[(match_row, [match_stats_rows]), ...] ordenado do jogo mais antigo para o mais recente."""
+def get_confirmed_matches_with_stats(db, exclude_match_id=None):
+    """[(match_row, [match_stats_rows]), ...] ordenado do jogo mais antigo para o mais recente.
+    exclude_match_id deixa de fora um jogo específico — usado para comparar o
+    "antes" e o "depois" de um jogo em concreto (recordes/conquistas novas)."""
     matches = db.execute(
         "SELECT * FROM matches WHERE status = 'confirmado' ORDER BY match_date ASC, id ASC"
     ).fetchall()
     out = []
     for m in matches:
+        if exclude_match_id is not None and m["id"] == exclude_match_id:
+            continue
         rows = db.execute("SELECT * FROM match_stats WHERE match_id = ?", (m["id"],)).fetchall()
         out.append((m, rows))
     return out
@@ -130,22 +140,23 @@ def summarize_user(user_id, matches_with_stats, mvp_map):
         "avg_goals": (goals / games) if games else 0,
         "avg_assists": (assists / games) if games else 0,
         "hat_trick": any(t["goals"] >= 3 for t in timeline),
+        "poker": any(t["goals"] >= 4 for t in timeline),
         "timeline": timeline,
     }
     summary["form"] = compute_form(timeline)
     return summary
 
 
-def get_all_summaries(db):
+def get_all_summaries(db, exclude_match_id=None):
     """{user_id: summary} para todos os jogadores, calculado a partir de um único varrimento dos jogos confirmados."""
-    matches_with_stats = get_confirmed_matches_with_stats(db)
+    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id)
     mvp_map = compute_match_mvp_map(matches_with_stats)
     user_ids = [r["id"] for r in db.execute("SELECT id FROM users").fetchall()]
     return {uid: summarize_user(uid, matches_with_stats, mvp_map) for uid in user_ids}
 
 
-def get_player_summary(db, user_id):
-    matches_with_stats = get_confirmed_matches_with_stats(db)
+def get_player_summary(db, user_id, exclude_match_id=None):
+    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id)
     mvp_map = compute_match_mvp_map(matches_with_stats)
     return summarize_user(user_id, matches_with_stats, mvp_map)
 
@@ -192,13 +203,15 @@ def get_rank(db, user_id):
     return None
 
 
-def get_records(db):
-    matches_with_stats = get_confirmed_matches_with_stats(db)
+def get_records(db, exclude_match_id=None):
+    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id)
     mvp_map = compute_match_mvp_map(matches_with_stats)
     users = {r["id"]: r for r in db.execute("SELECT * FROM users").fetchall()}
     summaries = {uid: summarize_user(uid, matches_with_stats, mvp_map) for uid in users}
 
-    best_goals = best_assists = best_involvement = None
+    best_goals = {"value": 0, "user_id": None, "date": None}
+    best_assists = {"value": 0, "user_id": None, "date": None}
+    best_involvement = {"value": 0, "user_id": None, "date": None}
     for m, rows in matches_with_stats:
         for r in rows:
             if not r["submitted"]:
@@ -216,6 +229,7 @@ def get_records(db):
     win_streak = {"value": 0, "user_id": None}
     loss_streak = {"value": 0, "user_id": None}
     mvp_streak = {"value": 0, "user_id": None}
+    most_games = {"value": 0, "user_id": None}
     for uid, s in summaries.items():
         w = longest_streak(s["timeline"], lambda t: t["result"] == "win")
         l = longest_streak(s["timeline"], lambda t: t["result"] == "loss")
@@ -226,6 +240,8 @@ def get_records(db):
             loss_streak = {"value": l, "user_id": uid}
         if mv > mvp_streak["value"]:
             mvp_streak = {"value": mv, "user_id": uid}
+        if s["games"] > most_games["value"]:
+            most_games = {"value": s["games"], "user_id": uid}
 
     return {
         "best_goals": best_goals,
@@ -234,8 +250,51 @@ def get_records(db):
         "win_streak": win_streak,
         "loss_streak": loss_streak,
         "mvp_streak": mvp_streak,
+        "most_games": most_games,
         "users": users,
     }
+
+
+# Record categories eligible for the milestone Overall bonus — deliberately
+# excludes loss_streak (nothing to reward there).
+BONUS_ELIGIBLE_RECORDS = ("best_goals", "best_assists", "best_involvement", "win_streak", "mvp_streak", "most_games")
+
+
+def compute_milestone_bonuses(db, match_id):
+    """{user_id: bonus_total} for players who, because of this specific match,
+    either set a new global record or unlocked a new achievement. Compares a
+    "before this match" snapshot against the current ("after") state."""
+    match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    participant_ids = {
+        r["user_id"] for r in db.execute("SELECT user_id FROM match_stats WHERE match_id = ?", (match_id,))
+    }
+
+    bonuses = {}
+
+    # Records: did the holder of any bonus-eligible category change, and is
+    # the new holder someone who played in this match?
+    records_before = get_records(db, exclude_match_id=match_id)
+    records_after = get_records(db)
+    for key in BONUS_ELIGIBLE_RECORDS:
+        before = records_before[key]
+        after = records_after[key]
+        if (after["value"], after["user_id"]) == (before["value"], before["user_id"]):
+            continue
+        if after["user_id"] in participant_ids:
+            bonuses[after["user_id"]] = bonuses.get(after["user_id"], 0) + RECORD_BONUS
+
+    # Achievements: anyone in this match who crossed from locked to unlocked
+    # on any achievement, purely because of this match.
+    for user_id in participant_ids:
+        summary_before = get_player_summary(db, user_id, exclude_match_id=match_id)
+        summary_after = get_player_summary(db, user_id)
+        unlocked_before = {a["id"] for a in get_achievements(summary_before) if a["unlocked"]}
+        unlocked_after = {a["id"] for a in get_achievements(summary_after) if a["unlocked"]}
+        newly_unlocked = unlocked_after - unlocked_before
+        if newly_unlocked:
+            bonuses[user_id] = bonuses.get(user_id, 0) + RECORD_BONUS * len(newly_unlocked)
+
+    return bonuses
 
 
 def get_evolution_series(db, user_id, summary):

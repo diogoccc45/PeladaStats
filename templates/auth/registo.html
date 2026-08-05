@@ -42,7 +42,6 @@
       <span class="text-xs" style="color:var(--text-muted)" id="previewTeam">Equipa preferida por definir</span>
     </div>
   </div>
-
   <!-- Form steps -->
   <form id="wizardForm" method="POST" action="{{ url_for('auth.registo') }}" class="flex-1 flex flex-col">
 
@@ -96,6 +95,18 @@
       <div>
         <label class="field-label">URL da foto do jogador</label>
         <input type="text" id="favPlayerImg" name="favPlayerImg" value="{{ form.get('favPlayerImg', '') }}" placeholder="https://..." class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+        <div class="flex items-start gap-4 mt-3">
+          <div class="cropper-box" id="favPlayerImgCropper"></div>
+          <div class="flex-1 flex flex-col gap-2 pt-1">
+            <span class="text-xs" id="favPlayerImgStatus" style="color:var(--accent-danger)"></span>
+            <label class="field-label">Zoom</label>
+            <input type="range" min="100" max="300" value="100" class="cropper-zoom" id="favPlayerImgZoomSlider">
+            <button type="button" class="text-xs text-left" style="color:var(--text-muted)" id="favPlayerImgReset">↺ Repor enquadramento</button>
+          </div>
+        </div>
+        <input type="hidden" name="favPlayerImgZoom" id="favPlayerImgZoomInput" value="1.0">
+        <input type="hidden" name="favPlayerImgPosX" id="favPlayerImgPosXInput" value="50">
+        <input type="hidden" name="favPlayerImgPosY" id="favPlayerImgPosYInput" value="50">
       </div>
       <div>
         <label class="field-label">Equipa preferida</label>
@@ -104,6 +115,18 @@
       <div>
         <label class="field-label">URL do logo da equipa</label>
         <input type="text" id="favTeamLogo" name="favTeamLogo" value="{{ form.get('favTeamLogo', '') }}" placeholder="https://..." class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+        <div class="flex items-start gap-4 mt-3">
+          <div class="cropper-box round" id="favTeamLogoCropper"></div>
+          <div class="flex-1 flex flex-col gap-2 pt-1">
+            <span class="text-xs" id="favTeamLogoStatus" style="color:var(--accent-danger)"></span>
+            <label class="field-label">Zoom</label>
+            <input type="range" min="100" max="300" value="100" class="cropper-zoom" id="favTeamLogoZoomSlider">
+            <button type="button" class="text-xs text-left" style="color:var(--text-muted)" id="favTeamLogoReset">↺ Repor enquadramento</button>
+          </div>
+        </div>
+        <input type="hidden" name="favTeamLogoZoom" id="favTeamLogoZoomInput" value="1.0">
+        <input type="hidden" name="favTeamLogoPosX" id="favTeamLogoPosXInput" value="50">
+        <input type="hidden" name="favTeamLogoPosY" id="favTeamLogoPosYInput" value="50">
       </div>
     </div>
 
@@ -119,7 +142,12 @@
 <script>
   let step = 1;
   const total = 3;
-  const state = { nickname:"", foot:"{{ form.get('foot', '') }}", favPlayerImg:"{{ form.get('favPlayerImg', '') }}", favTeam:"{{ form.get('favTeam', '') }}", favTeamLogo:"{{ form.get('favTeamLogo', '') }}" };
+  const state = {
+    nickname:"", foot:"{{ form.get('foot', '') }}",
+    favPlayerImg:"{{ form.get('favPlayerImg', '') }}", favPlayerImgZoom:1, favPlayerImgPosX:50, favPlayerImgPosY:50,
+    favTeam:"{{ form.get('favTeam', '') }}",
+    favTeamLogo:"{{ form.get('favTeamLogo', '') }}", favTeamLogoZoom:1, favTeamLogoPosX:50, favTeamLogoPosY:50,
+  };
 
   const dots = { 1: document.getElementById('dot1'), 2: document.getElementById('dot2'), 3: document.getElementById('dot3') };
   const lines = { 1: document.getElementById('line1'), 2: document.getElementById('line2') };
@@ -141,6 +169,8 @@
     const portrait = document.getElementById('portraitSlot');
     if(state.favPlayerImg){
       portrait.style.backgroundImage = `url('${state.favPlayerImg}')`;
+      portrait.style.backgroundSize = (state.favPlayerImgZoom * 100) + '%';
+      portrait.style.backgroundPosition = state.favPlayerImgPosX + '% ' + state.favPlayerImgPosY + '%';
       portrait.textContent = "";
     } else {
       portrait.style.backgroundImage = "";
@@ -149,7 +179,13 @@
 
     document.getElementById('previewTeam').textContent = state.favTeam || "Equipa preferida por definir";
     const teamLogo = document.getElementById('teamLogoSlot');
-    teamLogo.style.backgroundImage = state.favTeamLogo ? `url('${state.favTeamLogo}')` : "";
+    if(state.favTeamLogo){
+      teamLogo.style.backgroundImage = `url('${state.favTeamLogo}')`;
+      teamLogo.style.backgroundSize = (state.favTeamLogoZoom * 100) + '%';
+      teamLogo.style.backgroundPosition = state.favTeamLogoPosX + '% ' + state.favTeamLogoPosY + '%';
+    } else {
+      teamLogo.style.backgroundImage = "";
+    }
   }
 
   function syncStateFromInputs(){
@@ -173,6 +209,85 @@
 
   ['username','password','nickname','favPlayer','favPlayerImg','favTeam','favTeamLogo'].forEach(id=>{
     document.getElementById(id).addEventListener('input', ()=>{ syncStateFromInputs(); updatePreview(); validateStep(); });
+  });
+
+  function wireCropper(opts){
+    const urlInput = document.getElementById(opts.inputId);
+    const box = document.getElementById(opts.boxId);
+    const zoomSlider = document.getElementById(opts.zoomSliderId);
+    const zoomInput = document.getElementById(opts.zoomInputId);
+    const posXInput = document.getElementById(opts.posXInputId);
+    const posYInput = document.getElementById(opts.posYInputId);
+    const statusEl = document.getElementById(opts.statusId);
+    let knownUrl = urlInput.value.trim();
+
+    function writeState(){
+      state[opts.zoomKey] = parseFloat(zoomInput.value) || 1;
+      state[opts.xKey] = parseFloat(posXInput.value) || 50;
+      state[opts.yKey] = parseFloat(posYInput.value) || 50;
+      box.style.backgroundSize = (state[opts.zoomKey] * 100) + '%';
+      box.style.backgroundPosition = state[opts.xKey] + '% ' + state[opts.yKey] + '%';
+      updatePreview();
+    }
+
+    function loadImage(){
+      const url = urlInput.value.trim();
+      if(!url){ box.style.backgroundImage = ''; statusEl.textContent = ''; return; }
+      const img = new Image();
+      img.onload = () => { if(urlInput.value.trim() === url){ box.style.backgroundImage = `url('${url}')`; statusEl.textContent = ''; } };
+      img.onerror = () => { if(urlInput.value.trim() === url){ box.style.backgroundImage = ''; statusEl.textContent = 'Link inválido ou imagem não encontrada'; } };
+      img.src = url;
+    }
+
+    function resetFraming(){
+      zoomInput.value = 1; posXInput.value = 50; posYInput.value = 50;
+      zoomSlider.value = 100;
+      writeState();
+    }
+
+    urlInput.addEventListener('input', () => {
+      const url = urlInput.value.trim();
+      if(url !== knownUrl){ resetFraming(); knownUrl = url; }
+      loadImage();
+    });
+
+    zoomSlider.addEventListener('input', () => { zoomInput.value = zoomSlider.value / 100; writeState(); });
+    document.getElementById(opts.resetId).addEventListener('click', resetFraming);
+
+    let dragging = false, start = {x:0,y:0}, startPos = {x:50,y:50};
+    const pointerPos = e => e.touches ? e.touches[0] : e;
+    function pointerDown(e){ dragging = true; const p = pointerPos(e); start = {x:p.clientX,y:p.clientY}; startPos = {x:parseFloat(posXInput.value),y:parseFloat(posYInput.value)}; }
+    function pointerMove(e){
+      if(!dragging) return;
+      const p = pointerPos(e);
+      const rect = box.getBoundingClientRect();
+      posXInput.value = Math.max(0, Math.min(100, startPos.x - ((p.clientX - start.x) / rect.width) * 100)).toFixed(1);
+      posYInput.value = Math.max(0, Math.min(100, startPos.y - ((p.clientY - start.y) / rect.height) * 100)).toFixed(1);
+      writeState();
+      if(e.cancelable) e.preventDefault();
+    }
+    function pointerUp(){ dragging = false; }
+    box.addEventListener('mousedown', pointerDown);
+    window.addEventListener('mousemove', pointerMove);
+    window.addEventListener('mouseup', pointerUp);
+    box.addEventListener('touchstart', pointerDown, {passive:true});
+    window.addEventListener('touchmove', pointerMove, {passive:false});
+    window.addEventListener('touchend', pointerUp);
+
+    loadImage();
+  }
+
+  wireCropper({
+    inputId:'favPlayerImg', boxId:'favPlayerImgCropper', zoomSliderId:'favPlayerImgZoomSlider',
+    zoomInputId:'favPlayerImgZoomInput', posXInputId:'favPlayerImgPosXInput', posYInputId:'favPlayerImgPosYInput',
+    statusId:'favPlayerImgStatus', resetId:'favPlayerImgReset',
+    zoomKey:'favPlayerImgZoom', xKey:'favPlayerImgPosX', yKey:'favPlayerImgPosY',
+  });
+  wireCropper({
+    inputId:'favTeamLogo', boxId:'favTeamLogoCropper', zoomSliderId:'favTeamLogoZoomSlider',
+    zoomInputId:'favTeamLogoZoomInput', posXInputId:'favTeamLogoPosXInput', posYInputId:'favTeamLogoPosYInput',
+    statusId:'favTeamLogoStatus', resetId:'favTeamLogoReset',
+    zoomKey:'favTeamLogoZoom', xKey:'favTeamLogoPosX', yKey:'favTeamLogoPosY',
   });
 
   function validateStep(){

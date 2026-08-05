@@ -3,6 +3,23 @@
 {% block page_title %}Recordes{% endblock %}
 {% block app_content %}
 
+{% if recordman %}
+<div class="px-5 pt-5">
+  <div class="eyebrow mb-2">Homem dos recordes</div>
+  <div class="hero-card rounded-2xl p-5">
+    <div class="flex items-center gap-4 relative z-10">
+      <div class="w-16 h-16 rounded-xl portrait-slot flex items-center justify-center font-display font-700 text-xl" {% if recordman.user.favorite_player_image_url %}style="background-image:url('{{ recordman.user.favorite_player_image_url }}'); background-size:{{ (recordman.user.favorite_player_image_zoom * 100)|round|int }}%; background-position:{{ recordman.user.favorite_player_image_pos_x }}% {{ recordman.user.favorite_player_image_pos_y }}%;"{% endif %}>
+        {% if not recordman.user.favorite_player_image_url %}{{ recordman.user.nickname[:2]|upper }}{% endif %}
+      </div>
+      <div>
+        <div class="font-display font-700 text-2xl">{{ recordman.user.nickname }}</div>
+        <div class="text-xs mt-1" style="color:var(--text-muted)">detém {{ recordman.count }} recorde{{ 's' if recordman.count != 1 }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="px-5 pt-5 flex flex-col gap-3">
 
   {% macro record_card(icon, label, record, unit, is_streak=False) %}
@@ -30,6 +47,7 @@
   {{ record_card("📈", "Maior sequência de vitórias", records.win_streak, "jogos", is_streak=True) }}
   {{ record_card("📉", "Maior sequência de derrotas", records.loss_streak, "jogos", is_streak=True) }}
   {{ record_card("⭐", "Mais MVP consecutivos", records.mvp_streak, "jogos", is_streak=True) }}
+  {{ record_card("📅", "Mais jogos disputados", records.most_games, "jogos", is_streak=True) }}
 
 </div>
 

@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 
 from database import get_db
 from overall_engine import apply_overall_updates
+from stats import compute_milestone_bonuses
 
 bp = Blueprint("matches", __name__, url_prefix="/jogos")
 
@@ -24,7 +25,8 @@ def try_confirm_match(db, match_id):
 
     db.execute("UPDATE matches SET status = 'confirmado' WHERE id = ?", (match_id,))
     db.commit()
-    apply_overall_updates(db, match_id)
+    bonuses = compute_milestone_bonuses(db, match_id)
+    apply_overall_updates(db, match_id, bonus_by_user=bonuses)
     return True
 
 
