@@ -24,6 +24,7 @@ CREATE TABLE users (
     -- Overall persiste aqui porque é cumulativo (sobe/desce jogo a jogo);
     -- não é recalculado do zero a partir do histórico, é atualizado incrementalmente.
     overall REAL NOT NULL DEFAULT 65,
+    is_admin INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -49,10 +50,14 @@ CREATE TABLE match_stats (
     assists INTEGER NOT NULL DEFAULT 0,
     -- Em quem este jogador votou para MVP do jogo (nunca em si próprio).
     mvp_vote_for INTEGER REFERENCES users(id),
+    -- Em quem este jogador votou para Golo da Jornada (nunca em si próprio;
+    -- só faz sentido votar em alguém que marcou pelo menos um golo).
+    goal_of_match_vote_for INTEGER REFERENCES users(id),
     -- Distingue "ainda não preencheu" de "preencheu 0 golos/assistências a sério".
     submitted INTEGER NOT NULL DEFAULT 0,
     UNIQUE(match_id, user_id),
-    CHECK(mvp_vote_for IS NULL OR mvp_vote_for != user_id)
+    CHECK(mvp_vote_for IS NULL OR mvp_vote_for != user_id),
+    CHECK(goal_of_match_vote_for IS NULL OR goal_of_match_vote_for != user_id)
 );
 
 -- Guarda o Overall de cada jogador após cada jogo confirmado, para o gráfico de evolução.

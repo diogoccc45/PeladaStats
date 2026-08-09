@@ -27,13 +27,18 @@
 {% if my_row and match.status != 'confirmado' %}
 <div class="px-5 mt-5">
   <div class="flex items-center justify-between mb-2">
-    <div class="eyebrow">{{ 'Corrigir as tuas stats' if my_row.submitted else 'As tuas stats neste jogo' }}</div>
+    <div class="eyebrow">{{ 'As tuas stats' if my_row.submitted else 'As tuas stats neste jogo' }}</div>
     <span class="badge {{ 'badge-confirmado' if my_row.team == 'A' else 'badge-pendente' }}">Estás na Equipa {{ my_row.team }}</span>
   </div>
+
   {% if my_row.submitted %}
-  <div class="text-xs mb-2" style="color:var(--text-muted)">Já enviaste — podes corrigir enquanto o jogo estiver pendente.</div>
+  <div class="surface rounded-xl p-4 flex items-center justify-between" id="statsDisplay">
+    <span class="tabular text-sm" style="color:var(--text-muted)">⚽ {{ my_row.goals }} · 🎯 {{ my_row.assists }}</span>
+    <button type="button" class="btn-secondary text-xs px-3.5 py-2 rounded-lg" id="editStatsBtn">✏️ Editar</button>
+  </div>
   {% endif %}
-  <form method="POST" class="surface rounded-2xl p-5 flex flex-col gap-4">
+
+  <form method="POST" class="surface rounded-2xl p-5 flex flex-col gap-4 {{ 'hidden mt-3' if my_row.submitted }}" id="statsForm">
     <div class="grid grid-cols-2 gap-3">
       <div>
         <label class="field-label">⚽ Golos</label>
@@ -53,9 +58,26 @@
         {% endfor %}
       </select>
     </div>
+    <div>
+      <label class="field-label">🎯 Golo da Jornada</label>
+      <select name="goal_of_match_vote_for" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+        <option value="">— sem voto —</option>
+        {% for o in others %}
+        <option value="{{ o.user_id }}" {{ 'selected' if my_row.goal_of_match_vote_for == o.user_id }}>{{ o.nickname }} (Equipa {{ o.team }})</option>
+        {% endfor %}
+      </select>
+    </div>
     <button type="submit" class="btn-primary py-3 rounded-xl text-sm tracking-wide">{{ 'Guardar correção' if my_row.submitted else 'Guardar as minhas stats' }}</button>
   </form>
 </div>
+<script>
+  {% if my_row.submitted %}
+  document.getElementById('editStatsBtn').addEventListener('click', () => {
+    document.getElementById('statsDisplay').classList.add('hidden');
+    document.getElementById('statsForm').classList.remove('hidden');
+  });
+  {% endif %}
+</script>
 {% endif %}
 
 {% for team_letter in ['A', 'B'] %}

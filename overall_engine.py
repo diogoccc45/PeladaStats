@@ -9,17 +9,25 @@ Overall rating engine.
     deltas — handled in stats.compute_milestone_bonuses(), passed in here
     as bonus_by_user so this module doesn't need to import stats.py (would
     be a circular import — stats.py already imports from this module).
+  - A blowout penalty: losing by more than BLOWOUT_THRESHOLD goals costs a
+    little extra, and the extra cost grows with the margin.
+  - Golo da Jornada: like the MVP vote, but for the prettiest goal of the
+    match. Small bonus, same empates-do-nada-a-ninguém rule as MVP.
 
 Positivas, por jogador, por jogo:
-    Vitória:      +0.40
-    Golo:         +0.15 x golos marcados
-    Assistência:  +0.12 x assistências
-    MVP do jogo:  +0.30  (quem tiver mais votos nesse jogo; empates -> ninguém recebe o bónus)
+    Vitória:         +0.40
+    Golo:            +0.15 x golos marcados
+    Assistência:     +0.12 x assistências
+    MVP do jogo:     +0.30  (mais votos; empates -> ninguém recebe o bónus)
+    Golo da Jornada: +0.10  (mesma regra de empate que o MVP)
 
 Negativas:
     Derrota:                          -0.35
     Sem golo nem assistência no jogo: -0.15
     Zero votos de MVP no jogo:        -0.05
+    Goleada sofrida (perder por mais de 5 golos):
+        -0.05 por cada golo de diferença acima de 5
+        (perder por 6 = -0.05, por 7 = -0.10, por 8 = -0.15, ...)
 
 Dificuldade progressiva (aplicada ao TOTAL DAS POSITIVAS, com base no Overall
 ANTES do jogo). As negativas aplicam-se sempre a 100% — não faria sentido um
@@ -31,8 +39,7 @@ jogador em alta ter as suas más exibições "protegidas" pelo multiplicador:
     91-95  -> x0.40
     96-99  -> x0.20
 
-Overall final fica sempre entre 55 e 99 (o mínimo subiu de 50 para 55 —
-com a derrota agora a pesar mais, faz sentido um travão mais alto).
+Overall final fica sempre entre 55 e 99.
 """
 
 from collections import Counter
@@ -45,10 +52,14 @@ WIN_BONUS = 0.40
 GOAL_BONUS = 0.15
 ASSIST_BONUS = 0.12
 MVP_BONUS = 0.30
+GOAL_OF_MATCH_BONUS = 0.10
 
 LOSS_PENALTY = -0.35
 QUIET_GAME_PENALTY = -0.15
 ZERO_VOTES_PENALTY = -0.05
+
+BLOWOUT_THRESHOLD = 5
+BLOWOUT_STEP = -0.05
 
 
 def difficulty_multiplier(overall_before):
@@ -73,13 +84,22 @@ def _match_result(team, team_a_score, team_b_score):
     return "loss"
 
 
-def compute_match_mvps(stat_rows):
-    """
-    Devolve o conjunto de user_ids que são MVP do jogo: só o(s) jogador(es) com
-    MAIS votos, e só se esse máximo for único. Em caso de empate no topo,
-    devolve um conjunto vazio — ninguém recebe o bónus nesse jogo.
-    """
-    votes = Counter(r["mvp_vote_for"] for r in stat_rows if r["mvp_vote_for"] is not None)
+def blowout_penalty(result, team_a_score, team_b_score):
+    """Extra penalty for losing by more than BLOWOUT_THRESHOLD goals — grows
+    by BLOWOUT_STEP for every goal of margin beyond the threshold."""
+    if result != "loss":
+        return 0.0
+    margin = abs(team_a_score - team_b_score)
+    if margin <= BLOWOUT_THRESHOLD:
+        return 0.0
+    return (margin - BLOWOUT_THRESHOLD) * BLOWOUT_STEP
+
+
+def _top_unique_voted(stat_rows, vote_field):
+    """Shared logic for both MVP and Golo da Jornada: whoever has the most
+    votes in vote_field, only if that top count is uniquely held — a tie at
+    the top means nobody gets the bonus."""
+    votes = Counter(r[vote_field] for r in stat_rows if r[vote_field] is not None)
     if not votes:
         return set()
     top = max(votes.values())
@@ -87,6 +107,16 @@ def compute_match_mvps(stat_rows):
     if len(top_scorers) > 1:
         return set()
     return {top_scorers[0]}
+
+
+def compute_match_mvps(stat_rows):
+    """Devolve o conjunto de user_ids que são MVP do jogo (vazio em caso de empate no topo)."""
+    return _top_unique_voted(stat_rows, "mvp_vote_for")
+
+
+def compute_goal_of_match_winners(stat_rows):
+    """Devolve o conjunto de user_ids que marcaram o Golo da Jornada (vazio em caso de empate no topo)."""
+    return _top_unique_voted(stat_rows, "goal_of_match_vote_for")
 
 
 def apply_overall_updates(db, match_id, bonus_by_user=None):
@@ -108,6 +138,7 @@ def apply_overall_updates(db, match_id, bonus_by_user=None):
     ).fetchall()
 
     mvps = compute_match_mvps(stat_rows)
+    goal_winners = compute_goal_of_match_winners(stat_rows)
     voted_uids = {r["mvp_vote_for"] for r in stat_rows if r["mvp_vote_for"] is not None}
 
     results = []
@@ -121,6 +152,7 @@ def apply_overall_updates(db, match_id, bonus_by_user=None):
             positive += WIN_BONUS
         elif result == "loss":
             negative += LOSS_PENALTY
+            negative += blowout_penalty(result, match["team_a_score"], match["team_b_score"])
 
         positive += row["goals"] * GOAL_BONUS
         positive += row["assists"] * ASSIST_BONUS
@@ -130,6 +162,9 @@ def apply_overall_updates(db, match_id, bonus_by_user=None):
 
         if row["user_id"] in mvps:
             positive += MVP_BONUS
+
+        if row["user_id"] in goal_winners:
+            positive += GOAL_OF_MATCH_BONUS
 
         if row["user_id"] not in voted_uids:
             negative += ZERO_VOTES_PENALTY
@@ -159,6 +194,7 @@ def apply_overall_updates(db, match_id, bonus_by_user=None):
                 "overall_before": overall_before,
                 "overall_after": overall_after,
                 "was_mvp": row["user_id"] in mvps,
+                "was_goal_of_match": row["user_id"] in goal_winners,
             }
         )
 

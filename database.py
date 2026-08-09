@@ -26,6 +26,21 @@ def close_db(e=None):
         db.close()
 
 
+def delete_user_cascade(db, user_id):
+    """Removes a user and everything tied to them: their match_stats,
+    overall_history, comments, and any match left with zero players.
+    Also clears dangling MVP / Golo da Jornada votes cast by others that
+    pointed at this user. Used by the admin "remove player" action."""
+    db.execute("UPDATE match_stats SET mvp_vote_for = NULL WHERE mvp_vote_for = ?", (user_id,))
+    db.execute("UPDATE match_stats SET goal_of_match_vote_for = NULL WHERE goal_of_match_vote_for = ?", (user_id,))
+    db.execute("DELETE FROM match_stats WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM overall_history WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM comments WHERE user_id = ?", (user_id,))
+    db.execute("DELETE FROM matches WHERE id NOT IN (SELECT DISTINCT match_id FROM match_stats)")
+    db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    db.commit()
+
+
 def init_db():
     db = get_db()
     with current_app.open_resource("schema.sql") as f:

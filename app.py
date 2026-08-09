@@ -20,6 +20,7 @@ def create_app():
     def load_user(user_id):
         return User.get(user_id)
 
+    import admin
     import auth
     import comparar
     import dashboard
@@ -28,6 +29,7 @@ def create_app():
     import records
     import settings
 
+    app.register_blueprint(admin.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(matches.bp)

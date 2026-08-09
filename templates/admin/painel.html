@@ -1,0 +1,26 @@
+{% extends "base_app.html" %}
+{% block title %}Admin — PeladaStats{% endblock %}
+{% block page_title %}Admin{% endblock %}
+{% block app_content %}
+
+<div class="px-5 pt-5">
+  <div class="eyebrow mb-2">Jogadores</div>
+  <div class="flex flex-col gap-2.5">
+    {% for p in players %}
+    <div class="surface rounded-xl p-4 flex items-center justify-between">
+      <div>
+        <div class="font-600 text-sm">{{ p.user.nickname }}{% if p.user.is_admin %} <span class="badge badge-confirmado">Admin</span>{% endif %}</div>
+        <div class="text-xs mt-0.5" style="color:var(--text-muted)">@{{ p.user.username }} · {{ p.games }} jogo{{ 's' if p.games != 1 }} · Overall {{ p.user.overall|round|int }}</div>
+      </div>
+      {% if p.user.id != current_user.id %}
+      <form method="POST" action="{{ url_for('admin.remover', user_id=p.user.id) }}"
+            onsubmit="return confirm('Remover {{ p.user.nickname }}? Isto apaga as stats dele(a) e não há como desfazer.');">
+        <button type="submit" class="btn-danger text-xs px-3.5 py-2 rounded-lg">🗑 Remover</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

@@ -153,6 +153,7 @@ def detalhe(match_id):
         goals = request.form.get("goals", "")
         assists = request.form.get("assists", "")
         mvp_vote_for = request.form.get("mvp_vote_for", "")
+        goal_of_match_vote_for = request.form.get("goal_of_match_vote_for", "")
 
         erros = []
         try:
@@ -170,6 +171,12 @@ def detalhe(match_id):
         if mvp_vote_for is not None and mvp_vote_for not in {r["user_id"] for r in others}:
             erros.append("Escolhe um MVP entre os outros jogadores deste jogo.")
 
+        goal_of_match_vote_for = int(goal_of_match_vote_for) if goal_of_match_vote_for else None
+        if goal_of_match_vote_for == my_id:
+            erros.append("Não podes votar em ti próprio para Golo da Jornada.")
+        if goal_of_match_vote_for is not None and goal_of_match_vote_for not in {r["user_id"] for r in others}:
+            erros.append("Escolhe o Golo da Jornada entre os outros jogadores deste jogo.")
+
         if erros:
             for erro in erros:
                 flash(erro)
@@ -178,10 +185,10 @@ def detalhe(match_id):
         db.execute(
             """
             UPDATE match_stats
-            SET goals = ?, assists = ?, mvp_vote_for = ?, submitted = 1
+            SET goals = ?, assists = ?, mvp_vote_for = ?, goal_of_match_vote_for = ?, submitted = 1
             WHERE match_id = ? AND user_id = ?
             """,
-            (goals, assists, mvp_vote_for, match_id, my_id),
+            (goals, assists, mvp_vote_for, goal_of_match_vote_for, match_id, my_id),
         )
         db.commit()
 

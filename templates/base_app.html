@@ -30,6 +30,9 @@
         <a href="{{ url_for('records.lista') }}" class="tabbar-link {{ 'active' if request.endpoint == 'records.lista' }}">Recordes</a>
         <a href="{{ url_for('comparar.head_to_head') }}" class="tabbar-link {{ 'active' if request.endpoint == 'comparar.head_to_head' }}">Comparar</a>
         <a href="{{ url_for('settings.definicoes') }}" class="tabbar-link {{ 'active' if request.endpoint == 'settings.definicoes' }}">Definições</a>
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.painel') }}" class="tabbar-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.') }}">Admin</a>
+        {% endif %}
       </nav>
     </div>
   </div>
