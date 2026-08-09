@@ -100,6 +100,13 @@ def editar_jogador(user_id):
         fav_team = form.get("favTeam", "").strip()
         fav_team_logo = form.get("favTeamLogo", "").strip()
 
+        player_zoom = _parse_float(form.get("favPlayerImgZoom"), 1.0, 1.0, 3.0)
+        player_x = _parse_float(form.get("favPlayerImgPosX"), 50, 0, 100)
+        player_y = _parse_float(form.get("favPlayerImgPosY"), 50, 0, 100)
+        team_zoom = _parse_float(form.get("favTeamLogoZoom"), 1.0, 1.0, 3.0)
+        team_x = _parse_float(form.get("favTeamLogoPosX"), 50, 0, 100)
+        team_y = _parse_float(form.get("favTeamLogoPosY"), 50, 0, 100)
+
         erros = []
         if len(nickname) < 2:
             erros.append("A alcunha tem de ter pelo menos 2 caracteres.")
@@ -114,10 +121,19 @@ def editar_jogador(user_id):
                 """
                 UPDATE users SET
                     nickname = ?, preferred_foot = ?, favorite_player_name = ?,
-                    favorite_player_image_url = ?, favorite_team_name = ?, favorite_team_logo_url = ?
+                    favorite_player_image_url = ?, favorite_player_image_zoom = ?,
+                    favorite_player_image_pos_x = ?, favorite_player_image_pos_y = ?,
+                    favorite_team_name = ?, favorite_team_logo_url = ?,
+                    favorite_team_logo_zoom = ?, favorite_team_logo_pos_x = ?, favorite_team_logo_pos_y = ?
                 WHERE id = ?
                 """,
-                (nickname, foot, fav_player or None, fav_player_img or None, fav_team or None, fav_team_logo or None, user_id),
+                (
+                    nickname, foot, fav_player or None,
+                    fav_player_img or None, player_zoom, player_x, player_y,
+                    fav_team or None, fav_team_logo or None,
+                    team_zoom, team_x, team_y,
+                    user_id,
+                ),
             )
             db.commit()
             flash(f"Perfil de {nickname} atualizado.")
