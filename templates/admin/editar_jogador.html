@@ -1,0 +1,58 @@
+{% extends "base_app.html" %}
+{% block title %}Editar {{ user.nickname }} — PeladaStats{% endblock %}
+{% block page_title %}Editar jogador{% endblock %}
+{% block app_content %}
+
+<form method="POST" class="px-5 pt-5 flex flex-col gap-4 pb-10">
+  <div class="eyebrow">{{ user.nickname }} (@{{ user.username }})</div>
+
+  <div>
+    <label class="field-label">Alcunha</label>
+    <input type="text" name="nickname" value="{{ user.nickname }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+  </div>
+
+  <div>
+    <label class="field-label">Pé preferido</label>
+    <div class="grid grid-cols-3 gap-2 mt-1.5" id="footGroup">
+      {% for f in ["Esquerdo", "Direito", "Ambidestro"] %}
+      <button type="button" class="foot-btn py-2.5 rounded-xl {{ 'selected' if user.preferred_foot == f|lower }}" data-foot="{{ f }}">{{ f }}</button>
+      {% endfor %}
+    </div>
+    <input type="hidden" name="foot" id="footInput" value="{{ user.preferred_foot }}">
+  </div>
+
+  <div class="eyebrow mt-2">Inspiração</div>
+
+  <div>
+    <label class="field-label">Jogador de futebol preferido</label>
+    <input type="text" name="favPlayer" value="{{ user.favorite_player_name or '' }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+  </div>
+  <div>
+    <label class="field-label">URL da foto do jogador</label>
+    <input type="text" name="favPlayerImg" value="{{ user.favorite_player_image_url or '' }}" placeholder="https://..." class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+  </div>
+  <div>
+    <label class="field-label">Equipa preferida</label>
+    <input type="text" name="favTeam" value="{{ user.favorite_team_name or '' }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+  </div>
+  <div>
+    <label class="field-label">URL do logo da equipa</label>
+    <input type="text" name="favTeamLogo" value="{{ user.favorite_team_logo_url or '' }}" placeholder="https://..." class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+  </div>
+
+  <div class="text-xs" style="color:var(--text-muted)">O enquadramento (zoom/posição) das fotos não se edita aqui — pede ao próprio jogador para o ajustar nas Definições dele.</div>
+
+  <button type="submit" class="btn-primary py-3.5 rounded-xl text-sm tracking-wide mt-2">Guardar</button>
+</form>
+
+<script>
+  document.querySelectorAll('#footGroup .foot-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#footGroup .foot-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('footInput').value = btn.dataset.foot;
+    });
+  });
+</script>
+
+{% endblock %}

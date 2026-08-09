@@ -48,16 +48,22 @@ def _result_for(row, match):
     return "loss"
 
 
-def get_confirmed_matches_with_stats(db, exclude_match_id=None):
+def get_confirmed_matches_with_stats(db, exclude_match_id=None, up_to=None):
     """[(match_row, [match_stats_rows]), ...] ordenado do jogo mais antigo para o mais recente.
     exclude_match_id deixa de fora um jogo específico — usado para comparar o
-    "antes" e o "depois" de um jogo em concreto (recordes/conquistas novas)."""
+    "antes" e o "depois" de um jogo em concreto (recordes/conquistas novas).
+    up_to (match_date, id) só inclui jogos até esse ponto no tempo (inclusive)
+    — usado durante um recálculo completo do Overall, para que cada passo do
+    replay só "veja" o que já tinha acontecido nessa altura, não jogos futuros
+    que já estejam confirmados na base de dados."""
     matches = db.execute(
         "SELECT * FROM matches WHERE status = 'confirmado' ORDER BY match_date ASC, id ASC"
     ).fetchall()
     out = []
     for m in matches:
         if exclude_match_id is not None and m["id"] == exclude_match_id:
+            continue
+        if up_to is not None and (str(m["match_date"]), m["id"]) > up_to:
             continue
         rows = db.execute("SELECT * FROM match_stats WHERE match_id = ?", (m["id"],)).fetchall()
         out.append((m, rows))
@@ -147,16 +153,16 @@ def summarize_user(user_id, matches_with_stats, mvp_map):
     return summary
 
 
-def get_all_summaries(db, exclude_match_id=None):
+def get_all_summaries(db, exclude_match_id=None, up_to=None):
     """{user_id: summary} para todos os jogadores, calculado a partir de um único varrimento dos jogos confirmados."""
-    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id)
+    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id, up_to=up_to)
     mvp_map = compute_match_mvp_map(matches_with_stats)
     user_ids = [r["id"] for r in db.execute("SELECT id FROM users").fetchall()]
     return {uid: summarize_user(uid, matches_with_stats, mvp_map) for uid in user_ids}
 
 
-def get_player_summary(db, user_id, exclude_match_id=None):
-    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id)
+def get_player_summary(db, user_id, exclude_match_id=None, up_to=None):
+    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id, up_to=up_to)
     mvp_map = compute_match_mvp_map(matches_with_stats)
     return summarize_user(user_id, matches_with_stats, mvp_map)
 
@@ -203,8 +209,8 @@ def get_rank(db, user_id):
     return None
 
 
-def get_records(db, exclude_match_id=None):
-    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id)
+def get_records(db, exclude_match_id=None, up_to=None):
+    matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id, up_to=up_to)
     mvp_map = compute_match_mvp_map(matches_with_stats)
     users = {r["id"]: r for r in db.execute("SELECT * FROM users").fetchall()}
     summaries = {uid: summarize_user(uid, matches_with_stats, mvp_map) for uid in users}
@@ -260,11 +266,19 @@ def get_records(db, exclude_match_id=None):
 BONUS_ELIGIBLE_RECORDS = ("best_goals", "best_assists", "best_involvement", "win_streak", "mvp_streak", "most_games")
 
 
-def compute_milestone_bonuses(db, match_id):
+def compute_milestone_bonuses(db, match_id, up_to=None):
     """{user_id: bonus_total} for players who, because of this specific match,
     either set a new global record or unlocked a new achievement. Compares a
-    "before this match" snapshot against the current ("after") state."""
+    "before this match" snapshot against the current ("after") state.
+
+    up_to: see get_confirmed_matches_with_stats — defaults to this match's own
+    (date, id), i.e. "as of right now". Passed explicitly during a full replay
+    (recompute_all_overall) so a later admin correction doesn't leak future
+    matches into an earlier step's "before/after" comparison."""
     match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    if up_to is None:
+        up_to = (str(match["match_date"]), match_id)
+
     participant_ids = {
         r["user_id"] for r in db.execute("SELECT user_id FROM match_stats WHERE match_id = ?", (match_id,))
     }
@@ -273,8 +287,8 @@ def compute_milestone_bonuses(db, match_id):
 
     # Records: did the holder of any bonus-eligible category change, and is
     # the new holder someone who played in this match?
-    records_before = get_records(db, exclude_match_id=match_id)
-    records_after = get_records(db)
+    records_before = get_records(db, exclude_match_id=match_id, up_to=up_to)
+    records_after = get_records(db, up_to=up_to)
     for key in BONUS_ELIGIBLE_RECORDS:
         before = records_before[key]
         after = records_after[key]
@@ -286,8 +300,8 @@ def compute_milestone_bonuses(db, match_id):
     # Achievements: anyone in this match who crossed from locked to unlocked
     # on any achievement, purely because of this match.
     for user_id in participant_ids:
-        summary_before = get_player_summary(db, user_id, exclude_match_id=match_id)
-        summary_after = get_player_summary(db, user_id)
+        summary_before = get_player_summary(db, user_id, exclude_match_id=match_id, up_to=up_to)
+        summary_after = get_player_summary(db, user_id, up_to=up_to)
         unlocked_before = {a["id"] for a in get_achievements(summary_before) if a["unlocked"]}
         unlocked_after = {a["id"] for a in get_achievements(summary_after) if a["unlocked"]}
         newly_unlocked = unlocked_after - unlocked_before
@@ -297,19 +311,40 @@ def compute_milestone_bonuses(db, match_id):
     return bonuses
 
 
+def recompute_all_overall(db):
+    """Resets every player's Overall to the start and replays every confirmed
+    match, oldest first, from scratch — recomputing base deltas AND milestone
+    bonuses at each step exactly as they'd have happened live. Used after an
+    admin correction to a confirmed match's stats, so the fix propagates
+    properly instead of leaving the rest of the history stale."""
+    from overall_engine import OVERALL_START, apply_overall_updates
+
+    db.execute("DELETE FROM overall_history")
+    db.execute("UPDATE users SET overall = ?", (OVERALL_START,))
+    db.commit()
+
+    matches = db.execute(
+        "SELECT id, match_date FROM matches WHERE status = 'confirmado' ORDER BY match_date ASC, id ASC"
+    ).fetchall()
+    for m in matches:
+        up_to = (str(m["match_date"]), m["id"])
+        bonuses = compute_milestone_bonuses(db, m["id"], up_to=up_to)
+        apply_overall_updates(db, m["id"], bonus_by_user=bonuses)
+
+
 def get_evolution_series(db, user_id, summary):
     overall_rows = db.execute(
         """
-        SELECT oh.overall_after, m.match_date
+        SELECT oh.overall_after, COALESCE(m.match_date, date(oh.recorded_at)) AS event_date
         FROM overall_history oh
-        JOIN matches m ON m.id = oh.match_id
+        LEFT JOIN matches m ON m.id = oh.match_id
         WHERE oh.user_id = ?
-        ORDER BY m.match_date ASC, oh.id ASC
+        ORDER BY event_date ASC, oh.id ASC
         """,
         (user_id,),
     ).fetchall()
 
-    overall_series = [{"date": str(r["match_date"]), "value": r["overall_after"]} for r in overall_rows]
+    overall_series = [{"date": str(r["event_date"]), "value": r["overall_after"]} for r in overall_rows]
 
     goals_series = []
     assists_series = []

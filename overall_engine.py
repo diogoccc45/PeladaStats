@@ -61,19 +61,22 @@ ZERO_VOTES_PENALTY = -0.05
 BLOWOUT_THRESHOLD = 5
 BLOWOUT_STEP = -0.05
 
+# (upper bound of the bracket, multiplier applied to positive deltas within it)
+DIFFICULTY_BRACKETS = [
+    (70, 1.20),
+    (80, 1.00),
+    (85, 0.80),
+    (90, 0.60),
+    (95, 0.40),
+    (99, 0.20),
+]
+
 
 def difficulty_multiplier(overall_before):
-    if overall_before <= 70:
-        return 1.20
-    if overall_before <= 80:
-        return 1.00
-    if overall_before <= 85:
-        return 0.80
-    if overall_before <= 90:
-        return 0.60
-    if overall_before <= 95:
-        return 0.40
-    return 0.20
+    for upper, multiplier in DIFFICULTY_BRACKETS:
+        if overall_before <= upper:
+            return multiplier
+    return DIFFICULTY_BRACKETS[-1][1]
 
 
 def _match_result(team, team_a_score, team_b_score):
@@ -117,6 +120,48 @@ def compute_match_mvps(stat_rows):
 def compute_goal_of_match_winners(stat_rows):
     """Devolve o conjunto de user_ids que marcaram o Golo da Jornada (vazio em caso de empate no topo)."""
     return _top_unique_voted(stat_rows, "goal_of_match_vote_for")
+
+
+def preview_delta(overall_before, result, goals=0, assists=0, is_mvp=False,
+                   is_goal_of_match=False, received_vote=True, blowout_margin=0):
+    """Pure preview of an Overall delta for a hypothetical match — no DB access,
+    doesn't write anything. Used by the in-app "How Overall works" page so its
+    worked examples always match this module's real math, even after future
+    tweaks to the constants above."""
+    positive = 0.0
+    negative = 0.0
+
+    if result == "win":
+        positive += WIN_BONUS
+    elif result == "loss":
+        negative += LOSS_PENALTY
+        if blowout_margin > BLOWOUT_THRESHOLD:
+            negative += (blowout_margin - BLOWOUT_THRESHOLD) * BLOWOUT_STEP
+
+    positive += goals * GOAL_BONUS
+    positive += assists * ASSIST_BONUS
+
+    if goals == 0 and assists == 0:
+        negative += QUIET_GAME_PENALTY
+    if is_mvp:
+        positive += MVP_BONUS
+    if is_goal_of_match:
+        positive += GOAL_OF_MATCH_BONUS
+    if not received_vote:
+        negative += ZERO_VOTES_PENALTY
+
+    multiplier = difficulty_multiplier(overall_before)
+    delta = positive * multiplier + negative
+    overall_after = max(OVERALL_MIN, min(OVERALL_MAX, overall_before + delta))
+
+    return {
+        "positive": positive,
+        "negative": negative,
+        "multiplier": multiplier,
+        "delta": delta,
+        "overall_before": overall_before,
+        "overall_after": overall_after,
+    }
 
 
 def apply_overall_updates(db, match_id, bonus_by_user=None):

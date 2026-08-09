@@ -22,6 +22,10 @@
     <button type="submit" class="btn-danger w-full py-2.5 rounded-xl text-sm">🗑 Apagar jogo</button>
   </form>
   {% endif %}
+
+  {% if current_user.is_admin %}
+  <a href="{{ url_for('admin.editar_jogo', match_id=match.id) }}" class="btn-secondary block text-center py-2.5 rounded-xl text-sm mt-2.5">🛠 Admin: editar jogo</a>
+  {% endif %}
 </div>
 
 {% if my_row and match.status != 'confirmado' %}

@@ -7,18 +7,53 @@
   <div class="eyebrow mb-2">Jogadores</div>
   <div class="flex flex-col gap-2.5">
     {% for p in players %}
-    <div class="surface rounded-xl p-4 flex items-center justify-between">
-      <div>
-        <div class="font-600 text-sm">{{ p.user.nickname }}{% if p.user.is_admin %} <span class="badge badge-confirmado">Admin</span>{% endif %}</div>
-        <div class="text-xs mt-0.5" style="color:var(--text-muted)">@{{ p.user.username }} · {{ p.games }} jogo{{ 's' if p.games != 1 }} · Overall {{ p.user.overall|round|int }}</div>
+    <div class="surface rounded-xl p-4 flex flex-col gap-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="font-600 text-sm">{{ p.user.nickname }}{% if p.user.is_admin %} <span class="badge badge-confirmado">Admin</span>{% endif %}</div>
+          <div class="text-xs mt-0.5" style="color:var(--text-muted)">@{{ p.user.username }} · {{ p.games }} jogo{{ 's' if p.games != 1 }} · Overall {{ p.user.overall|round|int }}</div>
+        </div>
+        <a href="{{ url_for('admin.editar_jogador', user_id=p.user.id) }}" class="btn-secondary text-xs px-3.5 py-2 rounded-lg">✏️ Editar</a>
       </div>
-      {% if p.user.id != current_user.id %}
-      <form method="POST" action="{{ url_for('admin.remover', user_id=p.user.id) }}"
-            onsubmit="return confirm('Remover {{ p.user.nickname }}? Isto apaga as stats dele(a) e não há como desfazer.');">
-        <button type="submit" class="btn-danger text-xs px-3.5 py-2 rounded-lg">🗑 Remover</button>
+
+      <form method="POST" action="{{ url_for('admin.ajustar_overall', user_id=p.user.id) }}" class="flex items-center gap-2">
+        <input type="number" step="0.1" name="novo_overall" value="{{ p.user.overall }}" class="flex-1 px-3 py-2 rounded-lg text-sm">
+        <button type="submit" class="btn-secondary text-xs px-3 py-2 rounded-lg">Ajustar Overall</button>
       </form>
-      {% endif %}
+
+      <div class="flex items-center gap-2">
+        <form method="POST" action="{{ url_for('admin.promover', user_id=p.user.id) }}" class="flex-1">
+          <button type="submit" class="btn-secondary w-full text-xs px-3 py-2 rounded-lg">
+            {{ '👑 Retirar admin' if p.user.is_admin else '👑 Promover a admin' }}
+          </button>
+        </form>
+        {% if p.user.id != current_user.id %}
+        <form method="POST" action="{{ url_for('admin.remover', user_id=p.user.id) }}" class="flex-1"
+              onsubmit="return confirm('Remover {{ p.user.nickname }}? Isto apaga as stats dele(a) e não há como desfazer.');">
+          <button type="submit" class="btn-danger w-full text-xs px-3 py-2 rounded-lg">🗑 Remover</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="px-5 pt-6 pb-8">
+  <div class="eyebrow mb-2">Jogos recentes</div>
+  <div class="flex flex-col gap-2">
+    {% for m in matches %}
+    <a href="{{ url_for('admin.editar_jogo', match_id=m.id) }}" class="surface rounded-xl px-4 py-3 flex items-center justify-between rank-row">
+      <div>
+        <div class="font-display font-700 text-sm tabular">{{ m.team_a_score }} — {{ m.team_b_score }}</div>
+        <div class="text-xs mt-0.5" style="color:var(--text-muted)">{{ m.match_date }}</div>
+      </div>
+      {% if m.status == 'confirmado' %}
+        <span class="badge badge-confirmado">Confirmado</span>
+      {% else %}
+        <span class="badge badge-pendente">Pendente</span>
+      {% endif %}
+    </a>
     {% endfor %}
   </div>
 </div>

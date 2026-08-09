@@ -1,0 +1,106 @@
+{% extends "base_app.html" %}
+{% block title %}Como funciona o Overall — PeladaStats{% endblock %}
+{% block page_title %}Overall{% endblock %}
+{% block app_content %}
+
+<div class="px-5 pt-5">
+  <div class="surface rounded-2xl p-5 text-center">
+    <div class="ovr-badge font-display font-700 text-5xl leading-none" style="color:var(--accent-turf)">{{ e.OVERALL_START }}</div>
+    <div class="eyebrow mt-1">Ponto de partida</div>
+    <div class="text-xs mt-2" style="color:var(--text-muted)">Fica sempre entre {{ e.OVERALL_MIN }} e {{ e.OVERALL_MAX }}.</div>
+  </div>
+</div>
+
+<div class="px-5 pt-6">
+  <div class="eyebrow mb-2">O que soma, por jogo</div>
+  <div class="surface rounded-xl">
+    {% for label, value in [
+      ("Vitória", "+" + e.WIN_BONUS|string),
+      ("Golo marcado (cada)", "+" + e.GOAL_BONUS|string),
+      ("Assistência (cada)", "+" + e.ASSIST_BONUS|string),
+      ("MVP do jogo", "+" + e.MVP_BONUS|string),
+      ("Golo da Jornada", "+" + e.GOAL_OF_MATCH_BONUS|string),
+    ] %}
+    <div class="flex items-center justify-between px-4 py-3" {% if not loop.first %}style="border-top:1px solid var(--border-glass);"{% endif %}>
+      <span class="text-sm">{{ label }}</span>
+      <span class="font-display font-700 tabular text-sm" style="color:var(--accent-turf)">{{ value }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="px-5 pt-6">
+  <div class="eyebrow mb-2">O que desconta, por jogo</div>
+  <div class="surface rounded-xl">
+    <div class="flex items-center justify-between px-4 py-3">
+      <span class="text-sm">Derrota</span>
+      <span class="font-display font-700 tabular text-sm" style="color:var(--accent-danger)">{{ e.LOSS_PENALTY }}</span>
+    </div>
+    <div class="flex items-center justify-between px-4 py-3" style="border-top:1px solid var(--border-glass);">
+      <span class="text-sm">Jogo sem golos nem assistências</span>
+      <span class="font-display font-700 tabular text-sm" style="color:var(--accent-danger)">{{ e.QUIET_GAME_PENALTY }}</span>
+    </div>
+    <div class="flex items-center justify-between px-4 py-3" style="border-top:1px solid var(--border-glass);">
+      <span class="text-sm">Zero votos de MVP recebidos</span>
+      <span class="font-display font-700 tabular text-sm" style="color:var(--accent-danger)">{{ e.ZERO_VOTES_PENALTY }}</span>
+    </div>
+    <div class="px-4 py-3" style="border-top:1px solid var(--border-glass);">
+      <div class="flex items-center justify-between">
+        <span class="text-sm">Goleada sofrida</span>
+        <span class="font-display font-700 tabular text-sm" style="color:var(--accent-danger)">{{ e.BLOWOUT_STEP }} / golo</span>
+      </div>
+      <div class="text-xs mt-1" style="color:var(--text-muted)">Só se perderes por mais de {{ e.BLOWOUT_THRESHOLD }} golos de diferença — cada golo a mais soma-se a este desconto.</div>
+    </div>
+  </div>
+</div>
+
+<div class="px-5 pt-6">
+  <div class="eyebrow mb-2">Dificuldade progressiva</div>
+  <div class="text-xs mb-3" style="color:var(--text-muted)">
+    Só a parte que soma é multiplicada consoante o teu Overall — quanto mais alto estiveres, mais difícil é continuar a subir. Os descontos aplicam-se sempre a 100%.
+  </div>
+  <div class="surface rounded-xl">
+    {% set lower = namespace(v=50) %}
+    {% for upper, mult in e.DIFFICULTY_BRACKETS %}
+    <div class="flex items-center justify-between px-4 py-3" {% if not loop.first %}style="border-top:1px solid var(--border-glass);"{% endif %}>
+      <span class="text-sm tabular">{{ lower.v }}–{{ upper }}</span>
+      <span class="font-display font-700 tabular text-sm">×{{ mult }}</span>
+    </div>
+    {% set lower.v = upper + 1 %}
+    {% endfor %}
+  </div>
+</div>
+
+<div class="px-5 pt-6">
+  <div class="eyebrow mb-2">Bónus especial</div>
+  <div class="surface rounded-xl p-4">
+    <div class="flex items-center justify-between">
+      <span class="text-sm">Desbloquear uma conquista ou bater um recorde</span>
+      <span class="font-display font-700 tabular text-sm" style="color:var(--accent-gold)">+{{ record_bonus }}</span>
+    </div>
+    <div class="text-xs mt-1" style="color:var(--text-muted)">Aplica-se sempre a 100%, sem multiplicador — e empilha se desbloqueares mais do que um no mesmo jogo.</div>
+  </div>
+</div>
+
+<div class="px-5 pt-6 pb-8">
+  <div class="eyebrow mb-2">Exemplos práticos</div>
+  <div class="flex flex-col gap-2.5">
+    {% for ex in examples %}
+    <div class="surface rounded-xl p-4">
+      <div class="flex items-center justify-between">
+        <span class="font-600 text-sm">{{ ex.title }}</span>
+        <span class="font-display font-700 tabular text-sm" style="color:{{ 'var(--accent-turf)' if ex.result.delta >= 0 else 'var(--accent-danger)' }}">
+          {{ '%+.2f'|format(ex.result.delta) }}
+        </span>
+      </div>
+      <div class="text-xs mt-1" style="color:var(--text-muted)">{{ ex.desc }}</div>
+      <div class="text-xs mt-2 tabular" style="color:var(--text-muted)">
+        {{ ex.result.overall_before }} → {{ "%.2f"|format(ex.result.overall_after) }}
+        (mostra-se como {{ ex.result.overall_before|round|int }} → {{ ex.result.overall_after|round|int }})
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

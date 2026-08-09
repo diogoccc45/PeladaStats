@@ -1,0 +1,60 @@
+{% extends "base_app.html" %}
+{% block title %}Editar jogo — PeladaStats{% endblock %}
+{% block page_title %}Editar jogo{% endblock %}
+{% block app_content %}
+
+<div class="px-5 pt-5">
+  <div class="surface rounded-xl p-4 flex items-center justify-between">
+    <div class="font-display font-700 text-2xl tabular">{{ match.team_a_score }} — {{ match.team_b_score }}</div>
+    {% if match.status == 'confirmado' %}
+      <span class="badge badge-confirmado">Confirmado</span>
+    {% else %}
+      <span class="badge badge-pendente">Pendente</span>
+    {% endif %}
+  </div>
+  {% if match.status == 'confirmado' %}
+  <div class="flash rounded-xl px-4 py-3 mt-3">
+    Este jogo já está confirmado — ao guardares, o Overall de <strong>todos os jogadores</strong> é recalculado do zero a partir do histórico completo, para que a correção fique refletida em toda a parte (não só neste jogo).
+  </div>
+  {% endif %}
+</div>
+
+<form method="POST" class="px-5 pt-5 flex flex-col gap-4 pb-10">
+  {% for r in rows %}
+  <div class="surface rounded-2xl p-4 flex flex-col gap-3">
+    <div class="font-600 text-sm">{{ r.nickname }} · Equipa {{ r.team }}</div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="field-label">⚽ Golos</label>
+        <input type="number" min="0" name="goals_{{ r.user_id }}" value="{{ r.goals }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+      </div>
+      <div>
+        <label class="field-label">🎯 Assistências</label>
+        <input type="number" min="0" name="assists_{{ r.user_id }}" value="{{ r.assists }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+      </div>
+    </div>
+    <div>
+      <label class="field-label">⭐ Voto de MVP</label>
+      <select name="mvp_{{ r.user_id }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+        <option value="">— sem voto —</option>
+        {% for o in rows if o.user_id != r.user_id %}
+        <option value="{{ o.user_id }}" {{ 'selected' if r.mvp_vote_for == o.user_id }}>{{ o.nickname }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="field-label">🎯 Golo da Jornada</label>
+      <select name="golo_{{ r.user_id }}" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
+        <option value="">— sem voto —</option>
+        {% for o in rows if o.user_id != r.user_id %}
+        <option value="{{ o.user_id }}" {{ 'selected' if r.goal_of_match_vote_for == o.user_id }}>{{ o.nickname }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  {% endfor %}
+
+  <button type="submit" class="btn-primary py-3.5 rounded-xl text-sm tracking-wide">Guardar correção</button>
+</form>
+
+{% endblock %}

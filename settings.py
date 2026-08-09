@@ -2,7 +2,9 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from werkzeug.security import check_password_hash, generate_password_hash
 
+import overall_engine
 from database import get_db
+from stats import RECORD_BONUS
 
 bp = Blueprint("settings", __name__, url_prefix="/definicoes")
 
@@ -136,3 +138,42 @@ def change_password():
         db.commit()
         flash("Password atualizada.")
     return redirect(url_for("settings.definicoes"))
+
+
+@bp.route("/overall")
+@login_required
+def overall_explicado():
+    examples = [
+        {
+            "title": "Boa exibição",
+            "desc": "Ganhas, marcas 1 golo, fazes 1 assistência, e alguém vota em ti.",
+            "result": overall_engine.preview_delta(65, "win", goals=1, assists=1),
+        },
+        {
+            "title": "És o MVP",
+            "desc": "Ganhas, marcas 2 golos, e és o MVP do jogo.",
+            "result": overall_engine.preview_delta(65, "win", goals=2, is_mvp=True),
+        },
+        {
+            "title": "Derrota normal",
+            "desc": "Perdes por pouco, sem golos nem assistências, mas alguém vota em ti.",
+            "result": overall_engine.preview_delta(65, "loss"),
+        },
+        {
+            "title": "Goleada sofrida (0-7)",
+            "desc": "Perdes por 7 golos de diferença, sem contribuíres em nada.",
+            "result": overall_engine.preview_delta(65, "loss", blowout_margin=7),
+        },
+        {
+            "title": "A mesma boa exibição, mas já com Overall alto",
+            "desc": "Exatamente a mesma exibição do primeiro exemplo — golo, assistência, vitória — só que com 88 de Overall em vez de 65.",
+            "result": overall_engine.preview_delta(88, "win", goals=1, assists=1),
+        },
+    ]
+
+    return render_template(
+        "settings_overall.html",
+        e=overall_engine,
+        record_bonus=RECORD_BONUS,
+        examples=examples,
+    )
