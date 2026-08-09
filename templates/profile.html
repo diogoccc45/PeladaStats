@@ -4,7 +4,7 @@
 {% block app_content %}
 
 <div class="px-5 pt-5">
-  <div class="hero-card rounded-2xl p-5" style="padding-bottom:56px;">
+  <div class="hero-card rounded-2xl p-5">
     <div class="flex items-start justify-between relative z-10">
       <div>
         <div class="ovr-badge font-display font-700 text-5xl leading-none" style="color:var(--accent-turf)">{{ profile_user.overall|round|int }}</div>
@@ -22,28 +22,41 @@
       </div>
     </div>
     {% if profile_user.favorite_player_name or profile_user.favorite_team_name %}
-    <div class="relative z-10 flex items-center gap-4 mt-3 pt-3" style="border-top:1px solid var(--border-glass);">
-      {% if profile_user.favorite_player_name %}
-      <div class="text-xs" style="color:var(--text-muted)">Inspiração: <span style="color:var(--text-primary)" class="font-600">{{ profile_user.favorite_player_name }}</span></div>
-      {% endif %}
-      {% if profile_user.favorite_team_name %}
-      <div class="flex items-center gap-1.5 text-xs" style="color:var(--text-muted)">
-        {% if profile_user.favorite_team_logo_url %}<div class="w-4 h-4 rounded-full portrait-slot" style="background-image:url('{{ profile_user.favorite_team_logo_url }}'); background-size:{{ (profile_user.favorite_team_logo_zoom * 100)|round|int }}%; background-position:{{ profile_user.favorite_team_logo_pos_x }}% {{ profile_user.favorite_team_logo_pos_y }}%;"></div>{% endif %}
-        <span style="color:var(--text-primary)" class="font-600">{{ profile_user.favorite_team_name }}</span>
+    <div class="relative z-10 flex items-center justify-between mt-3 pt-3" style="border-top:1px solid var(--border-glass);">
+      <div class="flex items-center gap-4">
+        {% if profile_user.favorite_player_name %}
+        <div class="text-xs" style="color:var(--text-muted)">Inspiração: <span style="color:var(--text-primary)" class="font-600">{{ profile_user.favorite_player_name }}</span></div>
+        {% endif %}
+        {% if profile_user.favorite_team_name %}
+        <div class="flex items-center gap-1.5 text-xs" style="color:var(--text-muted)">
+          {% if profile_user.favorite_team_logo_url %}<div class="w-4 h-4 rounded-full portrait-slot" style="background-image:url('{{ profile_user.favorite_team_logo_url }}'); background-size:{{ (profile_user.favorite_team_logo_zoom * 100)|round|int }}%; background-position:{{ profile_user.favorite_team_logo_pos_x }}% {{ profile_user.favorite_team_logo_pos_y }}%;"></div>{% endif %}
+          <span style="color:var(--text-primary)" class="font-600">{{ profile_user.favorite_team_name }}</span>
+        </div>
+        {% endif %}
       </div>
-      {% endif %}
+      <a href="{{ url_for('profile.cartao', user_id=profile_user.id) }}" download="{{ profile_user.nickname }}-peladastats.png" class="card-share-btn" aria-label="Partilhar cartão" title="Partilhar cartão">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+      </a>
+    </div>
+    {% else %}
+    <div class="relative z-10 flex items-center justify-end mt-3 pt-3" style="border-top:1px solid var(--border-glass);">
+      <a href="{{ url_for('profile.cartao', user_id=profile_user.id) }}" download="{{ profile_user.nickname }}-peladastats.png" class="card-share-btn" aria-label="Partilhar cartão" title="Partilhar cartão">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+      </a>
     </div>
     {% endif %}
-
-    <a href="{{ url_for('profile.cartao', user_id=profile_user.id) }}" download="{{ profile_user.nickname }}-peladastats.png" class="card-share-btn" aria-label="Partilhar cartão" title="Partilhar cartão">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="18" cy="5" r="3"></circle>
-        <circle cx="6" cy="12" r="3"></circle>
-        <circle cx="18" cy="19" r="3"></circle>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-      </svg>
-    </a>
   </div>
 
   {% if is_me %}

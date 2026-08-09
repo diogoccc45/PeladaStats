@@ -143,7 +143,7 @@ label.field-label{
 .ovr-badge{ font-family:'Rajdhani',sans-serif; text-shadow:0 0 18px rgba(110,231,135,0.35); }
 
 .card-share-btn{
-  position:absolute; bottom:14px; right:14px; z-index:2;
+  flex-shrink:0;
   width:30px; height:30px; border-radius:999px;
   display:flex; align-items:center; justify-content:center;
   background:rgba(10,14,23,0.55); border:1px solid rgba(255,255,255,0.15);
