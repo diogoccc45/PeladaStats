@@ -41,6 +41,7 @@
   {% else %}
   <a href="{{ url_for('comparar.head_to_head', a=current_user.id, b=profile_user.id) }}" class="btn-secondary block text-center mt-3 py-2.5 rounded-xl text-sm">Comparar comigo</a>
   {% endif %}
+  <a href="{{ url_for('profile.cartao', user_id=profile_user.id) }}" download="{{ profile_user.nickname }}-peladastats.png" class="btn-secondary block text-center mt-2.5 py-2.5 rounded-xl text-sm">🖼 Partilhar cartão</a>
 </div>
 
 <div class="px-5 pt-6">

@@ -1,9 +1,10 @@
 import json
 
-from flask import Blueprint, abort, render_template
+from flask import Blueprint, Response, abort, render_template
 from flask_login import current_user, login_required
 
 import stats as stats_mod
+from card_generator import build_player_card
 from database import get_db
 
 bp = Blueprint("profile", __name__, url_prefix="/perfil")
@@ -43,3 +44,19 @@ def me():
 @login_required
 def other(user_id):
     return _render_profile(user_id)
+
+
+@bp.route("/<int:user_id>/cartao.png")
+@login_required
+def cartao(user_id):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if user is None:
+        abort(404)
+    summary = stats_mod.get_player_summary(db, user_id)
+    png_bytes = build_player_card(user, summary)
+    return Response(
+        png_bytes,
+        mimetype="image/png",
+        headers={"Content-Disposition": f'inline; filename="{user["nickname"]}-peladastats.png"'},
+    )

@@ -105,4 +105,25 @@
 </div>
 {% endfor %}
 
+<div class="px-5 mt-5 pb-8">
+  <div class="eyebrow mb-2">Comentários</div>
+  <div class="flex flex-col gap-2 mb-3">
+    {% for c in comments %}
+    <div class="surface rounded-xl px-4 py-3">
+      <div class="flex items-center justify-between">
+        <span class="font-600 text-sm">{{ c.nickname }}</span>
+        <span class="text-[10px]" style="color:var(--text-muted)">{{ c.created_at }}</span>
+      </div>
+      <div class="text-sm mt-1">{{ c.content }}</div>
+    </div>
+    {% else %}
+    <div class="text-center text-sm py-4" style="color:var(--text-muted)">Ainda sem comentários — sê o primeiro.</div>
+    {% endfor %}
+  </div>
+  <form method="POST" action="{{ url_for('matches.comentar', match_id=match.id) }}" class="flex items-center gap-2">
+    <input type="text" name="content" placeholder="Deixa um comentário..." maxlength="500" required class="flex-1 px-3.5 py-3 rounded-xl text-sm">
+    <button type="submit" class="btn-primary px-4 py-3 rounded-xl text-sm">Enviar</button>
+  </form>
+</div>
+
 {% endblock %}

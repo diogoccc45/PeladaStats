@@ -143,6 +143,16 @@ def detalhe(match_id):
     my_row = next((r for r in rows if r["user_id"] == my_id), None)
     others = [r for r in rows if r["user_id"] != my_id]
 
+    comments = db.execute(
+        """
+        SELECT c.*, u.nickname
+        FROM comments c JOIN users u ON u.id = c.user_id
+        WHERE c.match_id = ?
+        ORDER BY c.created_at ASC, c.id ASC
+        """,
+        (match_id,),
+    ).fetchall()
+
     if request.method == "POST":
         if my_row is None:
             abort(403)
@@ -198,8 +208,26 @@ def detalhe(match_id):
 
     return render_template(
         "matches/detalhe.html",
-        match=match, rows=rows, my_row=my_row, others=others,
+        match=match, rows=rows, my_row=my_row, others=others, comments=comments,
     )
+
+
+@bp.route("/<int:match_id>/comentar", methods=["POST"])
+@login_required
+def comentar(match_id):
+    db = get_db()
+    match = db.execute("SELECT id FROM matches WHERE id = ?", (match_id,)).fetchone()
+    if match is None:
+        abort(404)
+
+    content = request.form.get("content", "").strip()
+    if content:
+        db.execute(
+            "INSERT INTO comments (match_id, user_id, content) VALUES (?, ?, ?)",
+            (match_id, int(current_user.get_id()), content),
+        )
+        db.commit()
+    return redirect(url_for("matches.detalhe", match_id=match_id))
 
 
 @bp.route("/<int:match_id>/apagar", methods=["POST"])

@@ -59,6 +59,10 @@
         <label class="field-label">Password</label>
         <input type="password" id="password" name="password" placeholder="mínimo 4 caracteres" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm">
       </div>
+      <div>
+        <label class="field-label">Código de convite</label>
+        <input type="text" id="inviteCode" name="inviteCode" placeholder="pergunta a quem já joga" class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      </div>
     </div>
 
     <!-- Step 2: Perfil -->
@@ -207,7 +211,7 @@
     });
   });
 
-  ['username','password','nickname','favPlayer','favPlayerImg','favTeam','favTeamLogo'].forEach(id=>{
+  ['username','password','inviteCode','nickname','favPlayer','favPlayerImg','favTeam','favTeamLogo'].forEach(id=>{
     document.getElementById(id).addEventListener('input', ()=>{ syncStateFromInputs(); updatePreview(); validateStep(); });
   });
 
@@ -292,7 +296,7 @@
 
   function validateStep(){
     let ok = true;
-    if(step === 1) ok = document.getElementById('username').value.trim().length >= 3 && document.getElementById('password').value.trim().length >= 4;
+    if(step === 1) ok = document.getElementById('username').value.trim().length >= 3 && document.getElementById('password').value.trim().length >= 4 && document.getElementById('inviteCode').value.trim().length > 0;
     if(step === 2) ok = state.nickname.trim().length >= 2 && state.foot !== "";
     if(step === 3) ok = true;
     nextBtn.disabled = !ok;

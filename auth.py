@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import login_required, login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -25,6 +25,7 @@ def registo():
         form = request.form
         username = form.get("username", "").strip()
         password = form.get("password", "")
+        invite_code = form.get("inviteCode", "").strip()
         nickname = form.get("nickname", "").strip()
         foot = form.get("foot", "").strip().lower()
         fav_player = form.get("favPlayer", "").strip()
@@ -44,6 +45,8 @@ def registo():
             erros.append("O username tem de ter pelo menos 3 caracteres.")
         if len(password) < 4:
             erros.append("A password tem de ter pelo menos 4 caracteres.")
+        if invite_code != current_app.config["INVITE_CODE"]:
+            erros.append("Código de convite incorreto.")
         if len(nickname) < 2:
             erros.append("A alcunha tem de ter pelo menos 2 caracteres.")
         if foot not in PES_VALIDOS:
