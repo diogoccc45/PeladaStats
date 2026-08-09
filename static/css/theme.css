@@ -141,6 +141,17 @@ label.field-label{
   55%,100%{transform:translateX(70%);}
 }
 .ovr-badge{ font-family:'Rajdhani',sans-serif; text-shadow:0 0 18px rgba(110,231,135,0.35); }
+
+.card-share-btn{
+  position:absolute; bottom:16px; right:16px; z-index:2;
+  width:36px; height:36px; border-radius:999px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(10,14,23,0.55); border:1px solid rgba(255,255,255,0.15);
+  color:var(--text-primary);
+  transition:transform .12s ease, background .15s ease;
+}
+.card-share-btn:active{ transform:scale(0.92); background:rgba(10,14,23,0.75); }
+
 .portrait-slot{
   background:var(--bg-surface-2);
   background-size:cover; background-position:center top;
