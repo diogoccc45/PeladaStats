@@ -4,7 +4,7 @@
 {% block app_content %}
 
 <div class="px-5 pt-5">
-  <div class="hero-card rounded-2xl p-5">
+  <div class="hero-card rounded-2xl p-5" style="padding-bottom:56px;">
     <div class="flex items-start justify-between relative z-10">
       <div>
         <div class="ovr-badge font-display font-700 text-5xl leading-none" style="color:var(--accent-turf)">{{ profile_user.overall|round|int }}</div>
@@ -36,7 +36,7 @@
     {% endif %}
 
     <a href="{{ url_for('profile.cartao', user_id=profile_user.id) }}" download="{{ profile_user.nickname }}-peladastats.png" class="card-share-btn" aria-label="Partilhar cartão" title="Partilhar cartão">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="18" cy="5" r="3"></circle>
         <circle cx="6" cy="12" r="3"></circle>
         <circle cx="18" cy="19" r="3"></circle>
