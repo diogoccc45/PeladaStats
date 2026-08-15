@@ -20,6 +20,7 @@
       <span class="badge badge-pendente">Falta preencheres</span>
     {% endif %}
     {% if m.status == 'confirmado' %}
+      {% if item.my_result %}<span class="result-dot result-{{ item.my_result }}" title="{{ {'win': 'Ganhaste', 'draw': 'Empataste', 'loss': 'Perdeste'}[item.my_result] }}"></span>{% endif %}
       <span class="badge badge-confirmado">Confirmado</span>
     {% else %}
       <span class="badge badge-pendente">Pendente</span>

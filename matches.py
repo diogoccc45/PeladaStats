@@ -49,7 +49,19 @@ def lista():
             (m["id"],),
         ).fetchall()
         my_row = next((r for r in rows if r["user_id"] == int(current_user.get_id())), None)
-        items.append({"match": m, "rows": rows, "my_row": my_row})
+
+        my_result = None
+        if m["status"] == "confirmado" and my_row is not None:
+            if m["team_a_score"] == m["team_b_score"]:
+                my_result = "draw"
+            elif (my_row["team"] == "A" and m["team_a_score"] > m["team_b_score"]) or (
+                my_row["team"] == "B" and m["team_b_score"] > m["team_a_score"]
+            ):
+                my_result = "win"
+            else:
+                my_result = "loss"
+
+        items.append({"match": m, "rows": rows, "my_row": my_row, "my_result": my_result})
 
     pending_items = [i for i in items if i["match"]["status"] == "pendente"]
     confirmed_items = [i for i in items if i["match"]["status"] == "confirmado"]
