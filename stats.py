@@ -8,7 +8,7 @@ nesse jogo) que serve de base a tudo o resto — forma, streaks para recordes, e
 as séries dos gráficos de evolução.
 """
 
-from overall_engine import OVERALL_START, compute_match_mvps
+from overall_engine import OVERALL_START, compute_goal_of_match_winners, compute_match_mvps
 
 FORM_LEVELS = [
     (0.8, "Excelente", "🔥"),
@@ -34,6 +34,7 @@ ACHIEVEMENTS = [
     {"id": "10_vitorias", "label": "10 vitórias", "icon": "🏆", "check": lambda s: s["wins"] >= 10, "metric": "wins", "threshold": 10},
     {"id": "hat_trick", "label": "Hat-trick", "icon": "🎩", "check": lambda s: s["hat_trick"]},
     {"id": "poquer", "label": "Póquer", "icon": "🃏", "check": lambda s: s["poker"]},
+    {"id": "golo_da_jornada", "label": "Golo da Jornada", "icon": "🎯", "check": lambda s: s["golo_da_jornada"] >= 1, "count_field": "golo_da_jornada"},
     {"id": "100_participacoes", "label": "100 participações em golo", "icon": "🔥", "check": lambda s: s["goal_involvements"] >= 100, "metric": "goal_involvements", "threshold": 100},
 ]
 
@@ -75,6 +76,11 @@ def compute_match_mvp_map(matches_with_stats):
     return {m["id"]: compute_match_mvps(rows) for m, rows in matches_with_stats}
 
 
+def compute_match_golo_map(matches_with_stats):
+    """{match_id: {user_id que marcou o Golo da Jornada nesse jogo}}"""
+    return {m["id"]: compute_goal_of_match_winners(rows) for m, rows in matches_with_stats}
+
+
 def longest_streak(items, predicate):
     best = cur = 0
     for it in items:
@@ -98,8 +104,8 @@ def compute_form(timeline):
     return {"label": "Péssima", "emoji": "🔴", "ratio": ratio}
 
 
-def summarize_user(user_id, matches_with_stats, mvp_map):
-    games = wins = losses = draws = goals = assists = mvp_count = 0
+def summarize_user(user_id, matches_with_stats, mvp_map, golo_map):
+    games = wins = losses = draws = goals = assists = mvp_count = golo_count = 0
     timeline = []
 
     for m, rows in matches_with_stats:
@@ -108,6 +114,7 @@ def summarize_user(user_id, matches_with_stats, mvp_map):
             continue
         result = _result_for(row, m)
         was_mvp = user_id in mvp_map.get(m["id"], set())
+        was_golo = user_id in golo_map.get(m["id"], set())
 
         games += 1
         goals += row["goals"]
@@ -120,6 +127,8 @@ def summarize_user(user_id, matches_with_stats, mvp_map):
             draws += 1
         if was_mvp:
             mvp_count += 1
+        if was_golo:
+            golo_count += 1
 
         timeline.append(
             {
@@ -130,6 +139,7 @@ def summarize_user(user_id, matches_with_stats, mvp_map):
                 "goals": row["goals"],
                 "assists": row["assists"],
                 "was_mvp": was_mvp,
+                "was_golo_da_jornada": was_golo,
             }
         )
 
@@ -142,6 +152,7 @@ def summarize_user(user_id, matches_with_stats, mvp_map):
         "goals": goals,
         "assists": assists,
         "mvp": mvp_count,
+        "golo_da_jornada": golo_count,
         "goal_involvements": goal_involvements,
         "avg_goals": (goals / games) if games else 0,
         "avg_assists": (assists / games) if games else 0,
@@ -157,21 +168,26 @@ def get_all_summaries(db, exclude_match_id=None, up_to=None):
     """{user_id: summary} para todos os jogadores, calculado a partir de um único varrimento dos jogos confirmados."""
     matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id, up_to=up_to)
     mvp_map = compute_match_mvp_map(matches_with_stats)
+    golo_map = compute_match_golo_map(matches_with_stats)
     user_ids = [r["id"] for r in db.execute("SELECT id FROM users").fetchall()]
-    return {uid: summarize_user(uid, matches_with_stats, mvp_map) for uid in user_ids}
+    return {uid: summarize_user(uid, matches_with_stats, mvp_map, golo_map) for uid in user_ids}
 
 
 def get_player_summary(db, user_id, exclude_match_id=None, up_to=None):
     matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id, up_to=up_to)
     mvp_map = compute_match_mvp_map(matches_with_stats)
-    return summarize_user(user_id, matches_with_stats, mvp_map)
+    golo_map = compute_match_golo_map(matches_with_stats)
+    return summarize_user(user_id, matches_with_stats, mvp_map, golo_map)
 
 
 def get_achievements(summary):
-    return [
-        {"id": a["id"], "label": a["label"], "icon": a["icon"], "unlocked": bool(a["check"](summary))}
-        for a in ACHIEVEMENTS
-    ]
+    achievements = []
+    for a in ACHIEVEMENTS:
+        entry = {"id": a["id"], "label": a["label"], "icon": a["icon"], "unlocked": bool(a["check"](summary))}
+        if "count_field" in a:
+            entry["count"] = summary[a["count_field"]]
+        achievements.append(entry)
+    return achievements
 
 
 def get_next_achievement(summary):
@@ -212,8 +228,9 @@ def get_rank(db, user_id):
 def get_records(db, exclude_match_id=None, up_to=None):
     matches_with_stats = get_confirmed_matches_with_stats(db, exclude_match_id=exclude_match_id, up_to=up_to)
     mvp_map = compute_match_mvp_map(matches_with_stats)
+    golo_map = compute_match_golo_map(matches_with_stats)
     users = {r["id"]: r for r in db.execute("SELECT * FROM users").fetchall()}
-    summaries = {uid: summarize_user(uid, matches_with_stats, mvp_map) for uid in users}
+    summaries = {uid: summarize_user(uid, matches_with_stats, mvp_map, golo_map) for uid in users}
 
     best_goals = {"value": 0, "user_id": None, "date": None}
     best_assists = {"value": 0, "user_id": None, "date": None}
