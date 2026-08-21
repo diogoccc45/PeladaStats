@@ -21,7 +21,7 @@ FORM_LEVELS = [
 # Extra Overall points awarded once, the match a player sets a new global
 # record (Recordes page) or unlocks a new achievement — a flat, unscaled
 # bonus, same spirit as the match-result penalties: always full strength.
-RECORD_BONUS = 1.0
+RECORD_BONUS = 0.1
 
 ACHIEVEMENTS = [
     {"id": "primeiro_golo", "label": "Primeiro golo", "icon": "⚽", "check": lambda s: s["goals"] >= 1},
