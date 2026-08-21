@@ -92,12 +92,40 @@ def longest_streak(items, predicate):
     return best
 
 
+FORM_CONFIDENCE_GAMES = 5  # jogos recentes necessários para "confiança total" na forma
+FORM_RESULT_WEIGHT = 0.6
+FORM_CONTRIBUTION_WEIGHT = 0.4
+FORM_GOAL_WEIGHT = 0.25
+FORM_ASSIST_WEIGHT = 0.15
+
+
 def compute_form(timeline):
+    """Forma = mistura de resultado (60%) e exibição individual (40%,
+    golos+assistências, com um teto por jogo) nos últimos 5 jogos.
+
+    Com poucos jogos recentes, uma leitura de "forma" (que é sobre tendência)
+    não é fiável — por isso o resultado é puxado para "Normal" (0.5)
+    proporcionalmente à falta de jogos: com 1 jogo em 5, só 20% do peso vai
+    para o que realmente aconteceu nesse jogo; com 5 jogos, 100%."""
     recent = timeline[-5:]
     if not recent:
         return {"label": "Sem jogos", "emoji": "⚪", "ratio": None}
-    points = sum(2 if g["result"] == "win" else (1 if g["result"] == "draw" else 0) for g in recent)
-    ratio = points / (2 * len(recent))
+
+    game_scores = []
+    for g in recent:
+        if g["result"] == "win":
+            result_component = 1.0
+        elif g["result"] == "draw":
+            result_component = 0.5
+        else:
+            result_component = 0.0
+        contribution_component = min(1.0, g["goals"] * FORM_GOAL_WEIGHT + g["assists"] * FORM_ASSIST_WEIGHT)
+        game_scores.append(FORM_RESULT_WEIGHT * result_component + FORM_CONTRIBUTION_WEIGHT * contribution_component)
+
+    raw_ratio = sum(game_scores) / len(game_scores)
+    confidence = len(recent) / FORM_CONFIDENCE_GAMES
+    ratio = 0.5 + confidence * (raw_ratio - 0.5)
+
     for threshold, label, emoji in FORM_LEVELS:
         if ratio >= threshold:
             return {"label": label, "emoji": emoji, "ratio": ratio}
