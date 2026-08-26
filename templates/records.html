@@ -22,8 +22,8 @@
 
 <div class="px-5 pt-5 flex flex-col gap-3">
 
-  {% macro record_card(icon, label, record, unit, is_streak=False) %}
-  <div class="surface rounded-2xl p-4 flex items-center gap-4">
+  {% macro record_card(key, icon, label, record, unit, is_streak=False) %}
+  <div class="surface rounded-2xl p-4 flex items-center gap-4" style="cursor:pointer;" onclick="openRecordModal('{{ key }}', '{{ label }}', '{{ unit }}')">
     <div class="text-2xl">{{ icon }}</div>
     <div class="flex-1">
       <div class="eyebrow">{{ label }}</div>
@@ -38,17 +38,72 @@
         <div class="text-sm mt-0.5" style="color:var(--text-muted)">Ainda por bater</div>
       {% endif %}
     </div>
+    <div class="text-sm" style="color:var(--text-muted)">›</div>
   </div>
   {% endmacro %}
 
-  {{ record_card("⚽", "Mais golos num jogo", records.best_goals, "golos") }}
-  {{ record_card("🎯", "Mais assistências num jogo", records.best_assists, "assist.") }}
-  {{ record_card("🔥", "Mais participações num jogo", records.best_involvement, "part.") }}
-  {{ record_card("📈", "Maior sequência de vitórias", records.win_streak, "jogos", is_streak=True) }}
-  {{ record_card("📉", "Maior sequência de derrotas", records.loss_streak, "jogos", is_streak=True) }}
-  {{ record_card("⭐", "Mais MVP consecutivos", records.mvp_streak, "jogos", is_streak=True) }}
-  {{ record_card("📅", "Mais jogos disputados", records.most_games, "jogos", is_streak=True) }}
+  <div class="eyebrow px-1">Época até agora</div>
+  {{ record_card("top_goals_season", "⚽", "Mais golos na época", records.top_goals_season, "golos") }}
+  {{ record_card("top_assists_season", "🎯", "Mais assistências na época", records.top_assists_season, "assist.") }}
+  {{ record_card("top_involvement_season", "🔥", "Mais participações na época", records.top_involvement_season, "part.") }}
+  {{ record_card("top_mvp_season", "⭐", "Mais MVPs na época", records.top_mvp_season, "MVP") }}
+
+  <div class="eyebrow px-1 mt-2">Num único jogo</div>
+  {{ record_card("best_goals", "⚽", "Mais golos num jogo", records.best_goals, "golos") }}
+  {{ record_card("best_assists", "🎯", "Mais assistências num jogo", records.best_assists, "assist.") }}
+  {{ record_card("best_involvement", "🔥", "Mais participações num jogo", records.best_involvement, "part.") }}
+
+  <div class="eyebrow px-1 mt-2">Sequências</div>
+  {{ record_card("win_streak", "📈", "Maior sequência de vitórias", records.win_streak, "jogos", is_streak=True) }}
+  {{ record_card("loss_streak", "📉", "Maior sequência de derrotas", records.loss_streak, "jogos", is_streak=True) }}
+  {{ record_card("mvp_streak", "⭐", "Mais MVP consecutivos", records.mvp_streak, "jogos", is_streak=True) }}
+  {{ record_card("most_games", "📅", "Mais jogos disputados", records.most_games, "jogos", is_streak=True) }}
 
 </div>
+
+<!-- Popup de detalhe: classificação completa para a categoria escolhida -->
+<div id="recordModal" class="fixed inset-0 z-50 hidden items-end justify-center" style="background:rgba(4,6,11,0.7);" onclick="closeRecordModal(event)">
+  <div class="w-full max-w-md surface rounded-t-2xl p-5" style="max-height:75vh; overflow-y:auto; border-bottom:none;" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between mb-4">
+      <div class="font-display font-700 text-lg" id="recordModalTitle"></div>
+      <button type="button" onclick="closeRecordModal()" class="text-2xl leading-none" style="color:var(--text-muted)">&times;</button>
+    </div>
+    <div class="flex flex-col gap-2 pb-6" id="recordModalList"></div>
+  </div>
+</div>
+
+<script>
+  const LEADERBOARDS = {{ leaderboards_json|safe }};
+
+  function openRecordModal(key, title, unit){
+    document.getElementById('recordModalTitle').textContent = title;
+    const list = document.getElementById('recordModalList');
+    const rows = LEADERBOARDS[key] || [];
+
+    if(rows.length === 0){
+      list.innerHTML = '<div class="text-sm text-center py-6" style="color:var(--text-muted)">Ainda sem dados.</div>';
+    } else {
+      list.innerHTML = rows.map((r, i) => `
+        <div class="flex items-center justify-between px-3.5 py-2.5 rounded-xl" style="background:var(--bg-surface-2)">
+          <div class="flex items-center gap-3">
+            <span class="font-display font-700 text-sm tabular" style="color:var(--text-muted); width:24px;">${i + 1}º</span>
+            <span class="text-sm font-600">${r.nickname}</span>
+          </div>
+          <span class="font-display font-700 text-sm tabular">${r.value} ${unit}</span>
+        </div>
+      `).join('');
+    }
+
+    const modal = document.getElementById('recordModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeRecordModal(e){
+    const modal = document.getElementById('recordModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+</script>
 
 {% endblock %}

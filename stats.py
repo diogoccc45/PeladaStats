@@ -97,11 +97,12 @@ FORM_RESULT_WEIGHT = 0.6
 FORM_CONTRIBUTION_WEIGHT = 0.4
 FORM_GOAL_WEIGHT = 0.25
 FORM_ASSIST_WEIGHT = 0.15
+FORM_MVP_WEIGHT = 0.35
 
 
 def compute_form(timeline):
     """Forma = mistura de resultado (60%) e exibição individual (40%,
-    golos+assistências, com um teto por jogo) nos últimos 5 jogos.
+    golos+assistências+MVP, com um teto por jogo) nos últimos 5 jogos.
 
     Com poucos jogos recentes, uma leitura de "forma" (que é sobre tendência)
     não é fiável — por isso o resultado é puxado para "Normal" (0.5)
@@ -119,7 +120,10 @@ def compute_form(timeline):
             result_component = 0.5
         else:
             result_component = 0.0
-        contribution_component = min(1.0, g["goals"] * FORM_GOAL_WEIGHT + g["assists"] * FORM_ASSIST_WEIGHT)
+        contribution_component = min(
+            1.0,
+            g["goals"] * FORM_GOAL_WEIGHT + g["assists"] * FORM_ASSIST_WEIGHT + (FORM_MVP_WEIGHT if g["was_mvp"] else 0),
+        )
         game_scores.append(FORM_RESULT_WEIGHT * result_component + FORM_CONTRIBUTION_WEIGHT * contribution_component)
 
     raw_ratio = sum(game_scores) / len(game_scores)
@@ -260,6 +264,11 @@ def get_records(db, exclude_match_id=None, up_to=None):
     users = {r["id"]: r for r in db.execute("SELECT * FROM users").fetchall()}
     summaries = {uid: summarize_user(uid, matches_with_stats, mvp_map, golo_map) for uid in users}
 
+    # Personal bests per user for the single-game categories (needed both for
+    # the global record and for the per-category leaderboard popup).
+    personal_best_goals = {uid: 0 for uid in users}
+    personal_best_assists = {uid: 0 for uid in users}
+    personal_best_involvement = {uid: 0 for uid in users}
     best_goals = {"value": 0, "user_id": None, "date": None}
     best_assists = {"value": 0, "user_id": None, "date": None}
     best_involvement = {"value": 0, "user_id": None, "date": None}
@@ -267,24 +276,43 @@ def get_records(db, exclude_match_id=None, up_to=None):
         for r in rows:
             if not r["submitted"]:
                 continue
-            entry_goals = {"value": r["goals"], "user_id": r["user_id"], "date": str(m["match_date"])}
-            entry_assists = {"value": r["assists"], "user_id": r["user_id"], "date": str(m["match_date"])}
-            entry_inv = {"value": r["goals"] + r["assists"], "user_id": r["user_id"], "date": str(m["match_date"])}
-            if best_goals is None or entry_goals["value"] > best_goals["value"]:
+            uid = r["user_id"]
+            inv = r["goals"] + r["assists"]
+            personal_best_goals[uid] = max(personal_best_goals[uid], r["goals"])
+            personal_best_assists[uid] = max(personal_best_assists[uid], r["assists"])
+            personal_best_involvement[uid] = max(personal_best_involvement[uid], inv)
+
+            entry_goals = {"value": r["goals"], "user_id": uid, "date": str(m["match_date"])}
+            entry_assists = {"value": r["assists"], "user_id": uid, "date": str(m["match_date"])}
+            entry_inv = {"value": inv, "user_id": uid, "date": str(m["match_date"])}
+            if entry_goals["value"] > best_goals["value"]:
                 best_goals = entry_goals
-            if best_assists is None or entry_assists["value"] > best_assists["value"]:
+            if entry_assists["value"] > best_assists["value"]:
                 best_assists = entry_assists
-            if best_involvement is None or entry_inv["value"] > best_involvement["value"]:
+            if entry_inv["value"] > best_involvement["value"]:
                 best_involvement = entry_inv
 
     win_streak = {"value": 0, "user_id": None}
     loss_streak = {"value": 0, "user_id": None}
     mvp_streak = {"value": 0, "user_id": None}
     most_games = {"value": 0, "user_id": None}
+    top_goals_season = {"value": 0, "user_id": None}
+    top_assists_season = {"value": 0, "user_id": None}
+    top_involvement_season = {"value": 0, "user_id": None}
+    top_mvp_season = {"value": 0, "user_id": None}
+
+    personal_win_streak = {}
+    personal_loss_streak = {}
+    personal_mvp_streak = {}
+
     for uid, s in summaries.items():
         w = longest_streak(s["timeline"], lambda t: t["result"] == "win")
         l = longest_streak(s["timeline"], lambda t: t["result"] == "loss")
         mv = longest_streak(s["timeline"], lambda t: t["was_mvp"])
+        personal_win_streak[uid] = w
+        personal_loss_streak[uid] = l
+        personal_mvp_streak[uid] = mv
+
         if w > win_streak["value"]:
             win_streak = {"value": w, "user_id": uid}
         if l > loss_streak["value"]:
@@ -293,6 +321,37 @@ def get_records(db, exclude_match_id=None, up_to=None):
             mvp_streak = {"value": mv, "user_id": uid}
         if s["games"] > most_games["value"]:
             most_games = {"value": s["games"], "user_id": uid}
+        if s["goals"] > top_goals_season["value"]:
+            top_goals_season = {"value": s["goals"], "user_id": uid}
+        if s["assists"] > top_assists_season["value"]:
+            top_assists_season = {"value": s["assists"], "user_id": uid}
+        if s["goal_involvements"] > top_involvement_season["value"]:
+            top_involvement_season = {"value": s["goal_involvements"], "user_id": uid}
+        if s["mvp"] > top_mvp_season["value"]:
+            top_mvp_season = {"value": s["mvp"], "user_id": uid}
+
+    def leaderboard(values_by_user):
+        rows = [
+            {"user_id": uid, "nickname": users[uid]["nickname"], "value": v}
+            for uid, v in values_by_user.items()
+            if uid in users
+        ]
+        rows.sort(key=lambda r: r["value"], reverse=True)
+        return rows
+
+    leaderboards = {
+        "best_goals": leaderboard(personal_best_goals),
+        "best_assists": leaderboard(personal_best_assists),
+        "best_involvement": leaderboard(personal_best_involvement),
+        "win_streak": leaderboard(personal_win_streak),
+        "loss_streak": leaderboard(personal_loss_streak),
+        "mvp_streak": leaderboard(personal_mvp_streak),
+        "most_games": leaderboard({uid: s["games"] for uid, s in summaries.items()}),
+        "top_goals_season": leaderboard({uid: s["goals"] for uid, s in summaries.items()}),
+        "top_assists_season": leaderboard({uid: s["assists"] for uid, s in summaries.items()}),
+        "top_involvement_season": leaderboard({uid: s["goal_involvements"] for uid, s in summaries.items()}),
+        "top_mvp_season": leaderboard({uid: s["mvp"] for uid, s in summaries.items()}),
+    }
 
     return {
         "best_goals": best_goals,
@@ -302,12 +361,19 @@ def get_records(db, exclude_match_id=None, up_to=None):
         "loss_streak": loss_streak,
         "mvp_streak": mvp_streak,
         "most_games": most_games,
+        "top_goals_season": top_goals_season,
+        "top_assists_season": top_assists_season,
+        "top_involvement_season": top_involvement_season,
+        "top_mvp_season": top_mvp_season,
+        "leaderboards": leaderboards,
         "users": users,
     }
 
 
 # Record categories eligible for the milestone Overall bonus — deliberately
-# excludes loss_streak (nothing to reward there).
+# excludes loss_streak (nothing to reward there) and the season-cumulative
+# leaderboards (those would re-trigger for the current leader almost every
+# time they play, which doesn't fit the "special one-off milestone" spirit).
 BONUS_ELIGIBLE_RECORDS = ("best_goals", "best_assists", "best_involvement", "win_streak", "mvp_streak", "most_games")
 
 
