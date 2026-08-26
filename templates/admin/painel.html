@@ -58,4 +58,63 @@
   </div>
 </div>
 
+<div class="px-5 pt-6 pb-8">
+  <div class="eyebrow mb-2" style="color:var(--accent-danger)">Zona de perigo</div>
+
+  <div class="surface rounded-2xl p-4" style="border-color:rgba(255,107,107,0.3);">
+    <div class="font-600 text-sm">Reset às estatísticas</div>
+    <div class="text-xs mt-1" style="color:var(--text-muted)">
+      Antes de resetares seja o que for, exporta um arquivo completo desta época — uma linha por jogador, com todas as stats, recordes pessoais e conquistas, mais uma folha com todos os jogos (para poderes repor tudo depois, se precisares).
+    </div>
+    <a href="{{ url_for('admin.exportar') }}" class="btn-secondary block text-center py-2.5 rounded-xl text-sm mt-3">📊 Exportar tudo para Excel</a>
+    <button type="button" onclick="openResetModal()" class="btn-danger block w-full text-center py-2.5 rounded-xl text-sm mt-2.5">🔄 Reset às estatísticas</button>
+  </div>
+
+  <div class="surface rounded-2xl p-4 mt-3" style="border-color:rgba(255,107,107,0.3);">
+    <div class="font-600 text-sm">Importar / repor uma época</div>
+    <div class="text-xs mt-1" style="color:var(--text-muted)">
+      Repõe os jogos exatamente como estavam num ficheiro exportado anteriormente (a folha "Jogos" do Excel). Substitui por completo o histórico de jogos atual — usa para desfazer um reset, ou para voltar a uma época antiga.
+    </div>
+    <form method="POST" action="{{ url_for('admin.importar') }}" enctype="multipart/form-data" class="mt-3 flex flex-col gap-2.5"
+          onsubmit="return confirm('Isto substitui TODO o histórico de jogos atual pelo do ficheiro. Continuar?');">
+      <input type="file" name="ficheiro" accept=".xlsx" required class="text-xs">
+      <input type="password" name="invite_code" placeholder="Código de convite" required class="w-full px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      <button type="submit" class="btn-danger py-2.5 rounded-xl text-sm">📥 Importar e repor</button>
+    </form>
+  </div>
+</div>
+
+<!-- Popup de confirmação do reset -->
+<div id="resetModal" class="fixed inset-0 z-50 hidden items-center justify-center p-5" style="background:rgba(4,6,11,0.75);">
+  <div class="w-full max-w-sm surface rounded-2xl p-5" style="border-color:rgba(255,107,107,0.4);">
+    <div class="font-display font-700 text-lg" style="color:var(--accent-danger)">Tens a certeza?</div>
+    <div class="text-sm mt-2" style="color:var(--text-muted)">
+      Isto apaga TODO o histórico de jogos, comentários, e repõe o Overall de todos ao valor inicial. As contas dos jogadores mantêm-se. Só há como desfazer importando um Excel exportado antes.
+    </div>
+    <form method="POST" action="{{ url_for('admin.reset') }}" class="mt-4 flex flex-col gap-3">
+      <div>
+        <label class="field-label">Código de convite</label>
+        <input type="password" name="invite_code" required class="w-full mt-1.5 px-3.5 py-3 rounded-xl text-sm" autocomplete="off">
+      </div>
+      <div class="flex gap-2">
+        <button type="button" onclick="closeResetModal()" class="btn-secondary flex-1 py-2.5 rounded-xl text-sm">Cancelar</button>
+        <button type="submit" class="btn-danger flex-1 py-2.5 rounded-xl text-sm">Resetar a sério</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openResetModal(){
+    const modal = document.getElementById('resetModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  function closeResetModal(){
+    const modal = document.getElementById('resetModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+</script>
+
 {% endblock %}

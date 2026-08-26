@@ -1,10 +1,14 @@
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from datetime import date
+
+from flask import Blueprint, Response, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 import overall_engine
 import stats as stats_mod
 from database import delete_user_cascade, get_db
 from settings import PES_VALIDOS, _parse_float
+from xlsx_export import build_stats_workbook
+from xlsx_import import ImportError_, import_matches_from_workbook
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -216,3 +220,61 @@ def editar_jogo(match_id):
         return redirect(url_for("matches.detalhe", match_id=match_id))
 
     return render_template("admin/editar_jogo.html", match=match, rows=rows)
+
+
+@bp.route("/exportar.xlsx")
+@login_required
+def exportar():
+    _require_admin()
+    db = get_db()
+    xlsx_bytes = build_stats_workbook(db)
+    filename = f"peladastats-{date.today().isoformat()}.xlsx"
+    return Response(
+        xlsx_bytes,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@bp.route("/reset", methods=["POST"])
+@login_required
+def reset():
+    _require_admin()
+    if request.form.get("invite_code", "") != current_app.config["INVITE_CODE"]:
+        flash("Código de convite incorreto — reset cancelado.")
+        return redirect(url_for("admin.painel"))
+
+    db = get_db()
+    db.execute("DELETE FROM comments")
+    db.execute("DELETE FROM overall_history")
+    db.execute("DELETE FROM match_stats")
+    db.execute("DELETE FROM matches")
+    db.execute("UPDATE users SET overall = ?", (overall_engine.OVERALL_START,))
+    db.commit()
+
+    flash("Época resetada — todos os jogadores voltaram ao Overall inicial, sem histórico de jogos.")
+    return redirect(url_for("admin.painel"))
+
+
+@bp.route("/importar", methods=["POST"])
+@login_required
+def importar():
+    _require_admin()
+    if request.form.get("invite_code", "") != current_app.config["INVITE_CODE"]:
+        flash("Código de convite incorreto — importação cancelada.")
+        return redirect(url_for("admin.painel"))
+
+    file = request.files.get("ficheiro")
+    if file is None or file.filename == "":
+        flash("Escolhe um ficheiro .xlsx para importar.")
+        return redirect(url_for("admin.painel"))
+
+    db = get_db()
+    try:
+        result = import_matches_from_workbook(db, file.stream)
+    except ImportError_ as e:
+        flash(str(e))
+        return redirect(url_for("admin.painel"))
+
+    flash(f"Importação concluída — {result['matches']} jogos repostos, Overall recalculado.")
+    return redirect(url_for("admin.painel"))
