@@ -89,8 +89,8 @@ def novo():
         erros = []
         if not match_date:
             erros.append("Escolhe a data do jogo.")
-        if not team_a_ids or not team_b_ids:
-            erros.append("Cada equipa precisa de pelo menos um jogador.")
+        if not team_a_ids and not team_b_ids:
+            erros.append("Pelo menos uma equipa precisa de ter um jogador da app.")
         if team_a_ids & team_b_ids:
             erros.append("Um jogador não pode estar nas duas equipas.")
         try:
