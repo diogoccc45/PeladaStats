@@ -10,7 +10,7 @@
 
 {% macro match_card(item) %}
 {% set m = item.match %}
-<a href="{{ url_for('matches.detalhe', match_id=m.id) }}" class="surface rounded-2xl p-4 block rank-row">
+<a href="{{ url_for('matches.detalhe', match_id=m.id) }}" class="surface rounded-2xl p-4 block rank-row {{ 'match-card-' + item.my_result if item.my_result in ('win', 'loss') }}">
   <div class="scoreboard-banner">
     {% if m.status == 'confirmado' %}
       <span class="badge badge-confirmado">Confirmado</span>
