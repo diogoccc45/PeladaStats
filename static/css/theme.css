@@ -231,6 +231,40 @@ table.stats-table tbody tr:last-child td{ border-bottom:none; }
 .result-draw{ background:var(--accent-gold); }
 .result-loss{ background:var(--accent-danger); }
 
+/* Scoreboard match card (FULL-TIME broadcast graphic style) */
+.scoreboard-banner{
+  display:flex; justify-content:center;
+  margin-bottom:-9px; position:relative; z-index:2;
+}
+.scoreboard-bar{
+  background:var(--bg-primary);
+  border:1px solid var(--border-glass);
+  border-radius:16px;
+  padding:20px 14px 14px;
+  display:flex; align-items:center; justify-content:center; gap:14px;
+}
+.scoreboard-team-badge{
+  width:42px; height:42px; border-radius:11px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:17px;
+}
+.scoreboard-team-a{
+  background:linear-gradient(135deg, var(--accent-turf), var(--accent-turf-dim));
+  color:#04160B;
+}
+.scoreboard-team-b{
+  background:linear-gradient(135deg, #57648C, #333E63);
+  color:#F4F7FC;
+}
+[data-theme="light"] .scoreboard-team-b{
+  background:linear-gradient(135deg, #C3CCE3, #99A6C9);
+  color:#0A0E17;
+}
+.scoreboard-score{
+  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:30px;
+  letter-spacing:0.01em; min-width:84px; text-align:center; line-height:1;
+}
+
 /* Trend arrow (Overall change since last match) */
 .trend{
   font-family:'Rajdhani',sans-serif; font-weight:700; font-size:11px;
