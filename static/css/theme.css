@@ -223,14 +223,6 @@ table.stats-table tbody tr:last-child td{ border-bottom:none; }
 .badge-pendente{ background:rgba(245,185,66,0.14); color:var(--accent-gold); }
 .badge-erro{ background:rgba(255,107,107,0.14); color:var(--accent-danger); }
 
-/* Result dot (win/draw/loss) next to the Confirmado badge on the matches list */
-.result-dot{
-  width:9px; height:9px; border-radius:999px; display:inline-block;
-}
-.result-win{ background:var(--accent-turf); }
-.result-draw{ background:var(--accent-gold); }
-.result-loss{ background:var(--accent-danger); }
-
 /* Scoreboard match card (FULL-TIME broadcast graphic style) */
 .scoreboard-banner{
   display:flex; justify-content:center;
@@ -267,8 +259,8 @@ table.stats-table tbody tr:last-child td{ border-bottom:none; }
 }
 
 /* Contorno subtil do cartão do jogo, consoante o resultado de quem está a ver */
-.match-card-win{ border-color:rgba(110,231,135,0.35) !important; }
-.match-card-loss{ border-color:rgba(255,107,107,0.35) !important; }
+.match-card-win{ border-color:rgba(110,231,135,0.35) !important; border-width:2px !important; }
+.match-card-loss{ border-color:rgba(255,107,107,0.35) !important; border-width:2px !important; }
 
 /* Trend arrow (Overall change since last match) */
 .trend{

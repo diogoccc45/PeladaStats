@@ -25,14 +25,9 @@
   </div>
   <div class="flex items-center justify-between mt-2.5">
     <div class="text-xs" style="color:var(--text-muted)">{{ m.match_date }}{% if m.location %} · {{ m.location }}{% endif %}</div>
-    <div class="flex items-center gap-2">
-      {% if item.my_row and not item.my_row.submitted %}
-        <span class="badge badge-pendente">Falta preencheres</span>
-      {% endif %}
-      {% if m.status == 'confirmado' and item.my_result %}
-        <span class="result-dot result-{{ item.my_result }}" title="{{ {'win': 'Ganhaste', 'draw': 'Empataste', 'loss': 'Perdeste'}[item.my_result] }}"></span>
-      {% endif %}
-    </div>
+    {% if item.my_row and not item.my_row.submitted %}
+      <span class="badge badge-pendente">Falta preencheres</span>
+    {% endif %}
   </div>
 </a>
 {% endmacro %}
