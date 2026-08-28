@@ -76,3 +76,24 @@ CREATE TABLE comments (
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Achievement/record unlocks queued for the player to see (confetti + toast)
+-- on their next page load — created once, per player, at match confirmation
+-- time (not during an admin recompute replay, to avoid flooding everyone
+-- with old notifications after a correction).
+-- Achievement/record unlocks (kind='unlock') and match-created reminders
+-- (kind='reminder'), surfaced two ways:
+--   - celebrated_at: confetti + toast shown once, right after the player's
+--     next page load — only fires for kind='unlock'.
+--   - seen_at: the player opened the notifications bell and read it — this
+--     is what the unread badge counts, independent of the celebration.
+CREATE TABLE notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL DEFAULT 'unlock' CHECK(kind IN ('unlock', 'reminder')),
+    label TEXT NOT NULL,
+    match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    celebrated_at TIMESTAMP,
+    seen_at TIMESTAMP
+);

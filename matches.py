@@ -5,7 +5,7 @@ from flask_login import current_user, login_required
 
 from database import get_db
 from overall_engine import apply_overall_updates
-from stats import compute_milestone_bonuses
+from stats import compute_milestone_bonuses, create_unlock_notifications
 
 bp = Blueprint("matches", __name__, url_prefix="/jogos")
 
@@ -27,6 +27,7 @@ def try_confirm_match(db, match_id):
     db.commit()
     bonuses = compute_milestone_bonuses(db, match_id)
     apply_overall_updates(db, match_id, bonus_by_user=bonuses)
+    create_unlock_notifications(db, match_id)
     return True
 
 
@@ -124,6 +125,16 @@ def novo():
             "INSERT INTO match_stats (match_id, user_id, team) VALUES (?, ?, ?)",
             rows,
         )
+
+        creator_id = int(current_user.get_id())
+        other_participant_ids = (team_a_ids | team_b_ids) - {creator_id}
+        if other_participant_ids:
+            reminder = f"Preenche as tuas stats do jogo de {match_date}"
+            db.executemany(
+                "INSERT INTO notifications (user_id, kind, label, match_id) VALUES (?, 'reminder', ?, ?)",
+                [(uid, reminder, match_id) for uid in other_participant_ids],
+            )
+
         db.commit()
 
         flash("Jogo criado! Cada jogador já pode preencher as suas stats.")

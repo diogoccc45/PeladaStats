@@ -79,6 +79,7 @@ def import_matches_from_workbook(db, file_stream):
         })
 
     db.execute("DELETE FROM comments")
+    db.execute("DELETE FROM notifications")
     db.execute("DELETE FROM overall_history")
     db.execute("DELETE FROM match_stats")
     db.execute("DELETE FROM matches")

@@ -1,7 +1,8 @@
 from flask import Flask
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 
 import database
+from database import get_db
 from models import User
 
 
@@ -20,11 +21,57 @@ def create_app():
     def load_user(user_id):
         return User.get(user_id)
 
+    @app.context_processor
+    def inject_notifications():
+        # Runs on every template render for a logged-in page.
+        #
+        # Two separate concerns, tracked separately so they don't interfere:
+        #   - pending_notifications (celebrated_at): achievement/record
+        #     unlocks not yet celebrated — confetti + toast fires for these
+        #     once, right here, then they're marked celebrated. This is what
+        #     makes the celebration show up reliably for EVERY player who
+        #     unlocked something, not just whoever's submission happened to
+        #     confirm the match.
+        #   - unread_count / recent_notifications (seen_at): everything
+        #     (unlocks AND match-created reminders) shown in the bell
+        #     dropdown, marked seen only when the player actually opens it
+        #     (via notifications.marcar_vistas) — untouched by page loads,
+        #     so the badge persists until they actually check it.
+        if not current_user.is_authenticated:
+            return {}
+        db = get_db()
+        uid = int(current_user.get_id())
+
+        to_celebrate = db.execute(
+            "SELECT * FROM notifications WHERE user_id = ? AND kind = 'unlock' AND celebrated_at IS NULL ORDER BY id ASC",
+            (uid,),
+        ).fetchall()
+        if to_celebrate:
+            db.execute(
+                "UPDATE notifications SET celebrated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND kind = 'unlock' AND celebrated_at IS NULL",
+                (uid,),
+            )
+            db.commit()
+
+        unread_count = db.execute(
+            "SELECT COUNT(*) c FROM notifications WHERE user_id = ? AND seen_at IS NULL", (uid,)
+        ).fetchone()["c"]
+        recent_notifications = db.execute(
+            "SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 15", (uid,)
+        ).fetchall()
+
+        return {
+            "pending_notifications": to_celebrate,
+            "unread_count": unread_count,
+            "recent_notifications": recent_notifications,
+        }
+
     import admin
     import auth
     import comparar
     import dashboard
     import matches
+    import notifications
     import profile
     import records
     import settings
@@ -33,6 +80,7 @@ def create_app():
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(matches.bp)
+    app.register_blueprint(notifications.bp)
     app.register_blueprint(profile.bp)
     app.register_blueprint(records.bp)
     app.register_blueprint(comparar.bp)

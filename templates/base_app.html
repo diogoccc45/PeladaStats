@@ -12,6 +12,29 @@
         <span class="font-display font-700 text-base tracking-wide">PELADA<span style="color:var(--accent-turf)">STATS</span></span>
       </div>
       <div class="flex items-center gap-2.5">
+        <div class="relative" id="notifBellWrap">
+          <button type="button" onclick="toggleNotifDropdown()" class="relative flex items-center justify-center" style="color:var(--text-muted); width:26px; height:26px;" aria-label="Notificações" title="Notificações">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            {% if unread_count %}
+            <span id="notifBadge" class="absolute flex items-center justify-center font-700 rounded-full" style="top:-3px; right:-4px; width:15px; height:15px; font-size:9px; background:var(--accent-danger); color:#fff;">{{ unread_count if unread_count < 10 else '9+' }}</span>
+            {% endif %}
+          </button>
+          <div id="notifDropdown" class="hidden absolute right-0 mt-2 rounded-2xl p-2.5 flex flex-col gap-1.5" style="width:280px; max-height:360px; overflow-y:auto; background:var(--bg-surface); border:1px solid var(--border-glass); box-shadow:var(--shadow-card); z-index:60;">
+            {% for n in recent_notifications %}
+            <div class="rounded-xl px-3 py-2.5" style="background:{{ 'var(--bg-surface-2)' if not n.seen_at else 'transparent' }};">
+              <div class="text-xs" style="color:var(--text-primary); {{ '' if not n.seen_at else 'opacity:0.6;' }}">
+                {{ '🏆 ' if n.kind == 'unlock' else '📅 ' }}{{ n.label }}
+              </div>
+              <div class="text-[10px] mt-0.5" style="color:var(--text-muted)">{{ n.created_at }}</div>
+            </div>
+            {% else %}
+            <div class="text-xs text-center py-4" style="color:var(--text-muted)">Sem notificações.</div>
+            {% endfor %}
+          </div>
+        </div>
         <span class="text-xs font-600" style="color:var(--text-muted)">{{ current_user.nickname }}</span>
         <a href="{{ url_for('auth.logout') }}" style="color:var(--accent-danger)" title="Sair" aria-label="Sair">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -21,6 +44,26 @@
         </a>
       </div>
     </header>
+
+    <script>
+      function toggleNotifDropdown(){
+        const dropdown = document.getElementById('notifDropdown');
+        const wasHidden = dropdown.classList.contains('hidden');
+        dropdown.classList.toggle('hidden');
+        if(wasHidden){
+          const badge = document.getElementById('notifBadge');
+          if(badge) badge.remove();
+          fetch("{{ url_for('notifications.marcar_vistas') }}", { method: 'POST' }).catch(() => {});
+        }
+      }
+      document.addEventListener('click', function(e){
+        const wrap = document.getElementById('notifBellWrap');
+        const dropdown = document.getElementById('notifDropdown');
+        if(wrap && dropdown && !wrap.contains(e.target)){
+          dropdown.classList.add('hidden');
+        }
+      });
+    </script>
 
     <div class="tabbar-wrap">
       <nav class="tabbar">
@@ -42,5 +85,50 @@
   </main>
 
 </div>
+
+{% if pending_notifications %}
+<div id="achievementToast" class="fixed left-1/2 z-50 flex items-start gap-3 px-4 py-3 rounded-2xl" style="top:16px; max-width:320px; transform:translateX(-50%) translateY(-160%); background:var(--bg-surface); border:1px solid var(--accent-gold); box-shadow:var(--shadow-card); transition:transform .35s ease;">
+  <span class="text-xl">🏆</span>
+  <div>
+    <div class="text-[10px] font-700 tracking-wide" style="color:var(--accent-gold)">
+      {{ 'CONQUISTA DESBLOQUEADA' if pending_notifications|length == 1 else 'CONQUISTAS DESBLOQUEADAS' }}
+    </div>
+    {% for n in pending_notifications %}
+    <div class="text-sm font-600 mt-0.5">{{ n.label }}</div>
+    {% endfor %}
+  </div>
+</div>
+<script>
+  (function(){
+    function fireConfetti(){
+      const colors = ['#6EE787', '#F5B942', '#F4F7FC', '#3E8F5B'];
+      const container = document.createElement('div');
+      container.style.cssText = 'position:fixed; inset:0; pointer-events:none; z-index:9998; overflow:hidden;';
+      document.body.appendChild(container);
+      for(let i = 0; i < 60; i++){
+        const piece = document.createElement('div');
+        const size = 6 + Math.random() * 6;
+        piece.style.cssText = `
+          position:absolute; top:-20px; left:${Math.random() * 100}%;
+          width:${size}px; height:${size * 0.4}px;
+          background:${colors[Math.floor(Math.random() * colors.length)]};
+          opacity:${0.7 + Math.random() * 0.3};
+          transform:rotate(${Math.random() * 360}deg);
+          border-radius:2px;
+          animation: confetti-fall ${2.2 + Math.random() * 1.3}s ease-in forwards;
+          animation-delay:${Math.random() * 0.4}s;
+        `;
+        container.appendChild(piece);
+      }
+      setTimeout(() => container.remove(), 4000);
+    }
+
+    fireConfetti();
+    const toast = document.getElementById('achievementToast');
+    requestAnimationFrame(() => { toast.style.transform = 'translateX(-50%) translateY(0)'; });
+    setTimeout(() => { toast.style.transform = 'translateX(-50%) translateY(-160%)'; }, 4500);
+  })();
+</script>
+{% endif %}
 
 {% endblock %}

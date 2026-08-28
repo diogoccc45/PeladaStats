@@ -376,11 +376,25 @@ def get_records(db, exclude_match_id=None, up_to=None):
 # time they play, which doesn't fit the "special one-off milestone" spirit).
 BONUS_ELIGIBLE_RECORDS = ("best_goals", "best_assists", "best_involvement", "win_streak", "mvp_streak", "most_games")
 
+RECORD_LABELS = {
+    "best_goals": "Recorde: Mais golos num jogo",
+    "best_assists": "Recorde: Mais assistências num jogo",
+    "best_involvement": "Recorde: Mais participações num jogo",
+    "win_streak": "Recorde: Maior sequência de vitórias",
+    "mvp_streak": "Recorde: Mais MVP consecutivos",
+    "most_games": "Recorde: Mais jogos disputados",
+}
 
-def compute_milestone_bonuses(db, match_id, up_to=None):
-    """{user_id: bonus_total} for players who, because of this specific match,
-    either set a new global record or unlocked a new achievement. Compares a
-    "before this match" snapshot against the current ("after") state.
+
+def _detect_unlocks(db, match_id, up_to=None):
+    """[{"user_id", "label"}, ...] for every record or achievement newly
+    unlocked because of this specific match. Compares a "before this match"
+    snapshot against the current ("after") state.
+
+    Shared by compute_milestone_bonuses (sums RECORD_BONUS per user) and
+    create_unlock_notifications (writes one row per unlock) so the detection
+    logic — and the up_to point-in-time guard needed for a safe recompute
+    replay — only lives in one place.
 
     up_to: see get_confirmed_matches_with_stats — defaults to this match's own
     (date, id), i.e. "as of right now". Passed explicitly during a full replay
@@ -394,7 +408,7 @@ def compute_milestone_bonuses(db, match_id, up_to=None):
         r["user_id"] for r in db.execute("SELECT user_id FROM match_stats WHERE match_id = ?", (match_id,))
     }
 
-    bonuses = {}
+    unlocks = []
 
     # Records: did the holder of any bonus-eligible category change, and is
     # the new holder someone who played in this match?
@@ -406,7 +420,7 @@ def compute_milestone_bonuses(db, match_id, up_to=None):
         if (after["value"], after["user_id"]) == (before["value"], before["user_id"]):
             continue
         if after["user_id"] in participant_ids:
-            bonuses[after["user_id"]] = bonuses.get(after["user_id"], 0) + RECORD_BONUS
+            unlocks.append({"user_id": after["user_id"], "label": RECORD_LABELS[key]})
 
     # Achievements: anyone in this match who crossed from locked to unlocked
     # on any achievement, purely because of this match.
@@ -414,12 +428,39 @@ def compute_milestone_bonuses(db, match_id, up_to=None):
         summary_before = get_player_summary(db, user_id, exclude_match_id=match_id, up_to=up_to)
         summary_after = get_player_summary(db, user_id, up_to=up_to)
         unlocked_before = {a["id"] for a in get_achievements(summary_before) if a["unlocked"]}
-        unlocked_after = {a["id"] for a in get_achievements(summary_after) if a["unlocked"]}
-        newly_unlocked = unlocked_after - unlocked_before
-        if newly_unlocked:
-            bonuses[user_id] = bonuses.get(user_id, 0) + RECORD_BONUS * len(newly_unlocked)
+        for a in get_achievements(summary_after):
+            if a["unlocked"] and a["id"] not in unlocked_before:
+                unlocks.append({"user_id": user_id, "label": a["label"]})
 
+    return unlocks
+
+
+def compute_milestone_bonuses(db, match_id, up_to=None):
+    """{user_id: bonus_total} for players who, because of this specific match,
+    either set a new global record or unlocked a new achievement."""
+    bonuses = {}
+    for u in _detect_unlocks(db, match_id, up_to=up_to):
+        bonuses[u["user_id"]] = bonuses.get(u["user_id"], 0) + RECORD_BONUS
     return bonuses
+
+
+def create_unlock_notifications(db, match_id):
+    """Writes one notifications row per record/achievement newly unlocked by
+    this match, for whoever unlocked it — regardless of whether that player
+    is the one whose submission happened to confirm the match. Only called
+    from the normal single-match confirmation flow (matches.py), never
+    during recompute_all_overall's replay — an admin correcting an old match
+    shouldn't flood everyone with notifications for things they unlocked
+    long ago."""
+    unlocks = _detect_unlocks(db, match_id)
+    for u in unlocks:
+        db.execute(
+            "INSERT INTO notifications (user_id, label, match_id) VALUES (?, ?, ?)",
+            (u["user_id"], u["label"], match_id),
+        )
+    if unlocks:
+        db.commit()
+    return unlocks
 
 
 def recompute_all_overall(db):

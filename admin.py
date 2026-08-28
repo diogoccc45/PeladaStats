@@ -246,6 +246,7 @@ def reset():
 
     db = get_db()
     db.execute("DELETE FROM comments")
+    db.execute("DELETE FROM notifications")
     db.execute("DELETE FROM overall_history")
     db.execute("DELETE FROM match_stats")
     db.execute("DELETE FROM matches")
