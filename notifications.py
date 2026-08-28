@@ -31,7 +31,7 @@ def lembrete_semanal():
     if user_ids:
         db.executemany(
             "INSERT INTO notifications (user_id, kind, label) VALUES (?, 'reminder', ?)",
-            [(uid, "Hoje há jogo! Estás preparado?") for uid in user_ids],
+            [(uid, "Hoje é dia de pelada! Já votaste?") for uid in user_ids],
         )
         db.commit()
     return ("ok", 200)
