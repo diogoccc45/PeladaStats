@@ -12,6 +12,7 @@
         <span class="font-display font-700 text-base tracking-wide">PELADA<span style="color:var(--accent-turf)">STATS</span></span>
       </div>
       <div class="flex items-center gap-2.5">
+        <span class="text-xs font-600" style="color:var(--text-muted)">{{ current_user.nickname }}</span>
         <div class="relative" id="notifBellWrap">
           <button type="button" onclick="toggleNotifDropdown()" class="relative flex items-center justify-center" style="color:var(--text-muted); width:26px; height:26px;" aria-label="Notificações" title="Notificações">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -35,8 +36,7 @@
             {% endfor %}
           </div>
         </div>
-        <span class="text-xs font-600" style="color:var(--text-muted)">{{ current_user.nickname }}</span>
-        <a href="{{ url_for('auth.logout') }}" style="color:var(--accent-danger)" title="Sair" aria-label="Sair">
+        <a href="{{ url_for('auth.logout') }}" class="flex items-center justify-center" style="color:var(--accent-danger); width:26px; height:26px;" title="Sair" aria-label="Sair">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
             <line x1="12" y1="2" x2="12" y2="12"></line>
