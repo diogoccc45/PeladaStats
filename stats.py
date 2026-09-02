@@ -462,8 +462,15 @@ def create_unlock_notifications(db, match_id):
         )
     if unlocks:
         db.commit()
+        # Um único push por jogador, mesmo que tenha desbloqueado várias
+        # coisas no mesmo jogo (comum no primeiro jogo de alguém) — cada
+        # desbloqueio continua a aparecer como linha própria no sino.
+        by_user = {}
         for u in unlocks:
-            send_push_to_user(u["user_id"], "🏆 Conquista desbloqueada!", u["label"])
+            by_user.setdefault(u["user_id"], []).append(u["label"])
+        for user_id, labels in by_user.items():
+            title = "🏆 Conquista desbloqueada!" if len(labels) == 1 else "🏆 Conquistas desbloqueadas!"
+            send_push_to_user(user_id, title, " · ".join(labels))
     return unlocks
 
 

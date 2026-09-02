@@ -4,11 +4,52 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 from flask_login import current_user, login_required
 
 from database import get_db
-from overall_engine import apply_overall_updates
+from overall_engine import apply_overall_updates, compute_goal_of_match_winners, compute_match_mvps
 from push import send_push_to_user
 from stats import compute_milestone_bonuses, create_unlock_notifications
 
 bp = Blueprint("matches", __name__, url_prefix="/jogos")
+
+
+def notify_match_confirmed(db, match_id):
+    """Tells every participant the result, and — when there's a unique
+    winner (no tie) — who got MVP and/or Golo da Jornada. Written as several
+    separate notification rows (so the bell shows each piece on its own
+    line), but sent as a single combined push per player, so confirming a
+    match doesn't buzz everyone's phone three times in a row."""
+    match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    rows = db.execute(
+        "SELECT ms.*, u.nickname FROM match_stats ms JOIN users u ON u.id = ms.user_id WHERE ms.match_id = ?",
+        (match_id,),
+    ).fetchall()
+    participant_ids = [r["user_id"] for r in rows]
+    if not participant_ids:
+        return
+
+    labels = [f"Jogo confirmado: {match['team_a_score']}-{match['team_b_score']} ({match['match_date']})"]
+
+    mvps = compute_match_mvps(rows)
+    if len(mvps) == 1:
+        mvp_id = next(iter(mvps))
+        mvp_nick = next(r["nickname"] for r in rows if r["user_id"] == mvp_id)
+        labels.append(f"🏆 MVP do jogo: {mvp_nick}")
+
+    golo_winners = compute_goal_of_match_winners(rows)
+    if len(golo_winners) == 1:
+        golo_id = next(iter(golo_winners))
+        golo_nick = next(r["nickname"] for r in rows if r["user_id"] == golo_id)
+        labels.append(f"🎯 Golo da Jornada: {golo_nick}")
+
+    for label in labels:
+        db.executemany(
+            "INSERT INTO notifications (user_id, kind, label, match_id) VALUES (?, 'reminder', ?, ?)",
+            [(uid, label, match_id) for uid in participant_ids],
+        )
+    db.commit()
+
+    combined_body = " · ".join(labels)
+    for uid in participant_ids:
+        send_push_to_user(uid, "⚽ Jogo confirmado", combined_body)
 
 
 def try_confirm_match(db, match_id):
@@ -29,6 +70,7 @@ def try_confirm_match(db, match_id):
     bonuses = compute_milestone_bonuses(db, match_id)
     apply_overall_updates(db, match_id, bonus_by_user=bonuses)
     create_unlock_notifications(db, match_id)
+    notify_match_confirmed(db, match_id)
     return True
 
 
@@ -244,17 +286,33 @@ def detalhe(match_id):
 @login_required
 def comentar(match_id):
     db = get_db()
-    match = db.execute("SELECT id FROM matches WHERE id = ?", (match_id,)).fetchone()
+    match = db.execute("SELECT id, match_date FROM matches WHERE id = ?", (match_id,)).fetchone()
     if match is None:
         abort(404)
 
     content = request.form.get("content", "").strip()
     if content:
+        commenter_id = int(current_user.get_id())
         db.execute(
             "INSERT INTO comments (match_id, user_id, content) VALUES (?, ?, ?)",
-            (match_id, int(current_user.get_id()), content),
+            (match_id, commenter_id, content),
         )
         db.commit()
+
+        other_ids = [
+            r["user_id"] for r in db.execute("SELECT user_id FROM match_stats WHERE match_id = ?", (match_id,))
+            if r["user_id"] != commenter_id
+        ]
+        if other_ids:
+            label = f"💬 {current_user.nickname} comentou no jogo de {match['match_date']}"
+            db.executemany(
+                "INSERT INTO notifications (user_id, kind, label, match_id) VALUES (?, 'reminder', ?, ?)",
+                [(uid, label, match_id) for uid in other_ids],
+            )
+            db.commit()
+            for uid in other_ids:
+                send_push_to_user(uid, "💬 Novo comentário", label)
+
     return redirect(url_for("matches.detalhe", match_id=match_id))
 
 
