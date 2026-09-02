@@ -97,3 +97,16 @@ CREATE TABLE notifications (
     celebrated_at TIMESTAMP,
     seen_at TIMESTAMP
 );
+
+-- One row per subscribed device (a player can have more than one — phone
+-- and laptop, say). endpoint is unique per device/browser install; storing
+-- it lets us send a real OS-level push (not just the in-app bell) whenever
+-- a notification is created.
+CREATE TABLE push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

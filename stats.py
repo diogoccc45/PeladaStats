@@ -452,6 +452,8 @@ def create_unlock_notifications(db, match_id):
     during recompute_all_overall's replay — an admin correcting an old match
     shouldn't flood everyone with notifications for things they unlocked
     long ago."""
+    from push import send_push_to_user
+
     unlocks = _detect_unlocks(db, match_id)
     for u in unlocks:
         db.execute(
@@ -460,6 +462,8 @@ def create_unlock_notifications(db, match_id):
         )
     if unlocks:
         db.commit()
+        for u in unlocks:
+            send_push_to_user(u["user_id"], "🏆 Conquista desbloqueada!", u["label"])
     return unlocks
 
 

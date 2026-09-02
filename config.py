@@ -12,3 +12,10 @@ class Config:
     # Secret query-string token for the external cron ping that creates the
     # weekly "há jogo hoje" reminder — set via the WSGI file, same as above.
     CRON_SECRET = os.environ.get("CRON_SECRET", "muda-este-segredo-tambem")
+    # Web Push (real OS-level notifications) — the key pair that identifies
+    # this app to the browsers' push services. Public key is safe to expose
+    # to client-side JS; private key is a real secret, set via the WSGI
+    # file like the others above (repo is public).
+    VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "muda-esta-chave-publica")
+    VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "muda-esta-chave-privada")
+    VAPID_CLAIMS_SUB = os.environ.get("VAPID_CLAIMS_SUB", "mailto:admin@example.com")

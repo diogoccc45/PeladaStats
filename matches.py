@@ -5,6 +5,7 @@ from flask_login import current_user, login_required
 
 from database import get_db
 from overall_engine import apply_overall_updates
+from push import send_push_to_user
 from stats import compute_milestone_bonuses, create_unlock_notifications
 
 bp = Blueprint("matches", __name__, url_prefix="/jogos")
@@ -136,6 +137,10 @@ def novo():
             )
 
         db.commit()
+
+        if other_participant_ids:
+            for uid in other_participant_ids:
+                send_push_to_user(uid, "📅 Novo jogo", reminder)
 
         flash("Jogo criado! Cada jogador já pode preencher as suas stats.")
         return redirect(url_for("matches.detalhe", match_id=match_id))

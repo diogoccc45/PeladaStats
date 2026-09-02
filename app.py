@@ -21,6 +21,13 @@ def create_app():
     def load_user(user_id):
         return User.get(user_id)
 
+    @app.route("/sw.js")
+    def service_worker():
+        # Served at the root path (not /static/sw.js) so its default scope
+        # covers the whole app — needed for push notifications to work
+        # everywhere, not just under /static/.
+        return app.send_static_file("sw.js")
+
     @app.context_processor
     def inject_notifications():
         # Runs on every template render for a logged-in page.
@@ -37,8 +44,12 @@ def create_app():
         #     dropdown, marked seen only when the player actually opens it
         #     (via notifications.marcar_vistas) — untouched by page loads,
         #     so the badge persists until they actually check it.
+        #
+        # vapid_public_key is always exposed (harmless if unused) so any
+        # page can offer the "ativar notificações" subscribe button.
+        vapid_public_key = app.config["VAPID_PUBLIC_KEY"]
         if not current_user.is_authenticated:
-            return {}
+            return {"vapid_public_key": vapid_public_key}
         db = get_db()
         uid = int(current_user.get_id())
 
@@ -64,6 +75,7 @@ def create_app():
             "pending_notifications": to_celebrate,
             "unread_count": unread_count,
             "recent_notifications": recent_notifications,
+            "vapid_public_key": vapid_public_key,
         }
 
     import admin
