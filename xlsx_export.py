@@ -51,6 +51,7 @@ GLOBAL_RECORD_LABELS = {
     "top_assists_season": "Mais assistências na época",
     "top_involvement_season": "Mais participações na época",
     "top_mvp_season": "Mais MVPs na época",
+    "top_golo_da_jornada_season": "Mais Golos da Jornada na época",
 }
 
 # Column headers for the "Jogos" sheet — xlsx_import.py depends on this

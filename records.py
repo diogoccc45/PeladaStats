@@ -13,6 +13,7 @@ bp = Blueprint("records", __name__, url_prefix="/recordes")
 POSITIVE_RECORD_KEYS = (
     "best_goals", "best_assists", "best_involvement", "win_streak", "mvp_streak", "most_games",
     "top_goals_season", "top_assists_season", "top_involvement_season", "top_mvp_season",
+    "top_golo_da_jornada_season",
 )
 
 

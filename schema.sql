@@ -90,12 +90,20 @@ CREATE TABLE comments (
 CREATE TABLE notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL DEFAULT 'unlock' CHECK(kind IN ('unlock', 'reminder')),
+    kind TEXT NOT NULL DEFAULT 'unlock' CHECK(kind IN ('unlock', 'reminder', 'update')),
     label TEXT NOT NULL,
     match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     celebrated_at TIMESTAMP,
     seen_at TIMESTAMP
+);
+
+-- Small key-value store — right now just tracks the last git commit hash we
+-- already notified everyone about, so app startup can tell "new deploy"
+-- from "same code, process just restarted".
+CREATE TABLE app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT
 );
 
 -- One row per subscribed device (a player can have more than one — phone

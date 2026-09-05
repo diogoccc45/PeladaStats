@@ -300,6 +300,7 @@ def get_records(db, exclude_match_id=None, up_to=None):
     top_assists_season = {"value": 0, "user_id": None}
     top_involvement_season = {"value": 0, "user_id": None}
     top_mvp_season = {"value": 0, "user_id": None}
+    top_golo_da_jornada_season = {"value": 0, "user_id": None}
 
     personal_win_streak = {}
     personal_loss_streak = {}
@@ -329,6 +330,8 @@ def get_records(db, exclude_match_id=None, up_to=None):
             top_involvement_season = {"value": s["goal_involvements"], "user_id": uid}
         if s["mvp"] > top_mvp_season["value"]:
             top_mvp_season = {"value": s["mvp"], "user_id": uid}
+        if s["golo_da_jornada"] > top_golo_da_jornada_season["value"]:
+            top_golo_da_jornada_season = {"value": s["golo_da_jornada"], "user_id": uid}
 
     def leaderboard(values_by_user):
         rows = [
@@ -351,6 +354,7 @@ def get_records(db, exclude_match_id=None, up_to=None):
         "top_assists_season": leaderboard({uid: s["assists"] for uid, s in summaries.items()}),
         "top_involvement_season": leaderboard({uid: s["goal_involvements"] for uid, s in summaries.items()}),
         "top_mvp_season": leaderboard({uid: s["mvp"] for uid, s in summaries.items()}),
+        "top_golo_da_jornada_season": leaderboard({uid: s["golo_da_jornada"] for uid, s in summaries.items()}),
     }
 
     return {
@@ -365,6 +369,7 @@ def get_records(db, exclude_match_id=None, up_to=None):
         "top_assists_season": top_assists_season,
         "top_involvement_season": top_involvement_season,
         "top_mvp_season": top_mvp_season,
+        "top_golo_da_jornada_season": top_golo_da_jornada_season,
         "leaderboards": leaderboards,
         "users": users,
     }

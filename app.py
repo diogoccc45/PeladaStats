@@ -1,3 +1,5 @@
+import json
+
 from flask import Flask
 from flask_login import LoginManager, current_user
 
@@ -28,6 +30,11 @@ def create_app():
         # everywhere, not just under /static/.
         return app.send_static_file("sw.js")
 
+    with app.app_context():
+        from app_updates import check_for_new_deploy_safe
+
+        check_for_new_deploy_safe()
+
     @app.context_processor
     def inject_notifications():
         # Runs on every template render for a logged-in page.
@@ -40,7 +47,7 @@ def create_app():
         #     unlocked something, not just whoever's submission happened to
         #     confirm the match.
         #   - unread_count / recent_notifications (seen_at): everything
-        #     (unlocks AND match-created reminders) shown in the bell
+        #     (unlocks, reminders, AND deploy updates) shown in the bell
         #     dropdown, marked seen only when the player actually opens it
         #     (via notifications.marcar_vistas) — untouched by page loads,
         #     so the badge persists until they actually check it.
@@ -70,12 +77,17 @@ def create_app():
         recent_notifications = db.execute(
             "SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 15", (uid,)
         ).fetchall()
+        # "Nova Atualização" pode ter várias linhas (texto do commit) — o
+        # sino só mostra a primeira linha, o resto fica neste JSON para o
+        # popup ao clicar (ver base_app.html).
+        update_texts = {n["id"]: n["label"] for n in recent_notifications if n["kind"] == "update"}
 
         return {
             "pending_notifications": to_celebrate,
             "unread_count": unread_count,
             "recent_notifications": recent_notifications,
             "vapid_public_key": vapid_public_key,
+            "update_texts_json": json.dumps(update_texts),
         }
 
     import admin

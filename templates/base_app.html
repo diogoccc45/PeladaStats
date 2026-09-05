@@ -25,11 +25,14 @@
           </button>
           <div id="notifDropdown" class="hidden absolute right-0 mt-2 rounded-2xl p-2.5 flex flex-col gap-1.5" style="width:280px; max-height:360px; overflow-y:auto; background:var(--bg-surface); border:1px solid var(--border-glass); box-shadow:var(--shadow-card); z-index:60;">
             {% for n in recent_notifications %}
-            <div class="rounded-xl px-3 py-2.5" style="background:{{ 'var(--bg-surface-2)' if not n.seen_at else 'transparent' }};">
+            <div class="rounded-xl px-3 py-2.5" style="background:{{ 'var(--bg-surface-2)' if not n.seen_at else 'transparent' }}; {{ 'cursor:pointer;' if n.kind == 'update' }}" {% if n.kind == 'update' %}onclick="openUpdateModal({{ n.id }})"{% endif %}>
               <div class="text-xs" style="color:var(--text-primary); {{ '' if not n.seen_at else 'opacity:0.6;' }}">
-                {{ '🏆 ' if n.kind == 'unlock' else '📅 ' }}{{ n.label }}
+                {% if n.kind == 'unlock' %}🏆 {% elif n.kind == 'update' %}🆕 {% else %}📅 {% endif -%}
+                {{ n.label.split('\n')[0] if n.kind == 'update' else n.label }}
               </div>
-              <div class="text-[10px] mt-0.5" style="color:var(--text-muted)">{{ n.created_at }}</div>
+              <div class="text-[10px] mt-0.5" style="color:var(--text-muted)">
+                {{ n.created_at }}{{ ' · toca para ver tudo' if n.kind == 'update' }}
+              </div>
             </div>
             {% else %}
             <div class="text-xs text-center py-4" style="color:var(--text-muted)">Sem notificações.</div>
@@ -43,6 +46,31 @@
           </svg>
         </a>
       </div>
+
+      <div id="updateModal" class="hidden fixed inset-0 z-50 items-end justify-center" style="background:rgba(4,6,11,0.75);" onclick="closeUpdateModal(event)">
+        <div class="w-full max-w-md surface rounded-t-2xl p-5" style="max-height:75vh; overflow-y:auto;" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-display font-700 text-lg">🆕 Nova Atualização</div>
+            <button type="button" onclick="closeUpdateModal()" class="text-2xl leading-none" style="color:var(--text-muted)">&times;</button>
+          </div>
+          <div class="text-sm pb-6" style="white-space:pre-line; color:var(--text-primary);" id="updateModalBody"></div>
+        </div>
+      </div>
+      <script>
+        const UPDATE_TEXTS = {{ update_texts_json|safe }};
+        function openUpdateModal(id){
+          document.getElementById('updateModalBody').textContent = UPDATE_TEXTS[id] || '';
+          const modal = document.getElementById('updateModal');
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        }
+        function closeUpdateModal(){
+          const modal = document.getElementById('updateModal');
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        }
+      </script>
+
     </header>
 
     <script>
