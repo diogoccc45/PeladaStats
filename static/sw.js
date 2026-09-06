@@ -1,3 +1,14 @@
+// Assume control assim que uma nova versão deste ficheiro é instalada, em
+// vez de esperar por todas as abas fecharem — evita ficar preso numa
+// versão antiga (ex: ícone desatualizado) depois de corrigirmos algo.
+self.addEventListener('install', function (event) {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function (event) {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', function (event) {
   let data = { title: 'PeladaStats', body: '' };
   try {

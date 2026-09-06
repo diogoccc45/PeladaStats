@@ -27,8 +27,20 @@ def create_app():
     def service_worker():
         # Served at the root path (not /static/sw.js) so its default scope
         # covers the whole app — needed for push notifications to work
-        # everywhere, not just under /static/.
-        return app.send_static_file("sw.js")
+        # everywhere, not just under /static/. No-cache so the browser
+        # always re-checks for a newer version instead of running a stale
+        # one indefinitely (this is what caused the stuck-icon issue).
+        response = app.send_static_file("sw.js")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return response
+
+    @app.route("/manifest.json")
+    def web_app_manifest():
+        # Same reasoning as /sw.js — the Add-to-Home-Screen icon shouldn't
+        # get stuck on an old cached copy after we update it.
+        response = app.send_static_file("manifest.json")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return response
 
     with app.app_context():
         from app_updates import check_for_new_deploy_safe
