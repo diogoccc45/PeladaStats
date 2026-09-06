@@ -47,7 +47,7 @@
         </a>
       </div>
 
-      <div id="updateModal" class="hidden fixed inset-0 z-50 items-end justify-center" style="background:rgba(4,6,11,0.75);" onclick="closeUpdateModal(event)">
+      <div id="updateModal" class="hidden fixed inset-0 items-end justify-center" style="background:rgba(4,6,11,0.75); z-index:70;" onclick="closeUpdateModal(event)">
         <div class="w-full max-w-md surface rounded-t-2xl p-5" style="max-height:75vh; overflow-y:auto;" onclick="event.stopPropagation()">
           <div class="flex items-center justify-between mb-3">
             <div class="font-display font-700 text-lg">🆕 Nova Atualização</div>
@@ -60,6 +60,8 @@
         const UPDATE_TEXTS = {{ update_texts_json|safe }};
         function openUpdateModal(id){
           document.getElementById('updateModalBody').textContent = UPDATE_TEXTS[id] || '';
+          const dropdown = document.getElementById('notifDropdown');
+          if(dropdown) dropdown.classList.add('hidden');
           const modal = document.getElementById('updateModal');
           modal.classList.remove('hidden');
           modal.classList.add('flex');
