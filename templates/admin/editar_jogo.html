@@ -12,19 +12,28 @@
       <span class="badge badge-pendente">Pendente</span>
     {% endif %}
   </div>
-  <form method="POST" action="{{ url_for('admin.alterar_data', match_id=match.id) }}" class="surface rounded-xl p-4 mt-3">
-    <label class="field-label">📅 Data do jogo</label>
-    <div class="flex items-center gap-2 mt-1.5">
-      <input type="date" name="match_date" value="{{ match.match_date }}" required class="flex-1 px-3.5 py-3 rounded-xl text-sm">
-      <button type="submit" class="btn-secondary text-xs px-3.5 py-3 rounded-lg">Guardar data</button>
-    </div>
+  <div class="surface rounded-xl p-4 mt-3 flex flex-col gap-3">
+    <form method="POST" action="{{ url_for('admin.alterar_data', match_id=match.id) }}">
+      <label class="field-label">📅 Data do jogo</label>
+      <div class="flex items-center gap-2 mt-1.5">
+        <input type="date" name="match_date" value="{{ match.match_date }}" required class="flex-1 px-3.5 py-3 rounded-xl text-sm">
+        <button type="submit" class="btn-secondary text-xs px-3.5 py-3 rounded-lg">Guardar data</button>
+      </div>
+    </form>
+    <form method="POST" action="{{ url_for('admin.alterar_local', match_id=match.id) }}">
+      <label class="field-label">📍 Local</label>
+      <div class="flex items-center gap-2 mt-1.5">
+        <input type="text" name="location" value="{{ match.location or '' }}" maxlength="100" placeholder="Campo do Bairro" class="flex-1 px-3.5 py-3 rounded-xl text-sm">
+        <button type="submit" class="btn-secondary text-xs px-3.5 py-3 rounded-lg">Guardar local</button>
+      </div>
+    </form>
     {% if match.status == 'confirmado' %}
-    <div class="text-xs mt-2" style="color:var(--text-muted)">Só muda a data — não recalcula o Overall.</div>
+    <div class="text-xs" style="color:var(--text-muted)">Data e local só mudam esses campos — não recalculam o Overall.</div>
     {% endif %}
-  </form>
+  </div>
   {% if match.status == 'confirmado' %}
   <div class="flash rounded-xl px-4 py-3 mt-3">
-    Este jogo já está confirmado — ao guardares, o Overall de <strong>todos os jogadores</strong> é recalculado do zero a partir do histórico completo, para que a correção fique refletida em toda a parte (não só neste jogo).
+    Este jogo já está confirmado — ao guardares a correção das stats (em baixo), o Overall de <strong>todos os jogadores</strong> é recalculado do zero a partir do histórico completo, para que a correção fique refletida em toda a parte (não só neste jogo).
   </div>
   {% endif %}
 </div>

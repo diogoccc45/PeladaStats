@@ -284,6 +284,28 @@ def alterar_data(match_id):
     return redirect(url_for("admin.editar_jogo", match_id=match_id))
 
 
+@bp.route("/jogo/<int:match_id>/local", methods=["POST"])
+@login_required
+def alterar_local(match_id):
+    _require_admin()
+    db = get_db()
+    match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    if match is None:
+        abort(404)
+
+    # Empty means "no location" — stored as NULL, same as when a match is
+    # created without one. Display-only field: never touches stats/Overall.
+    new_location = request.form.get("location", "").strip()[:100] or None
+    if new_location == (match["location"] or None):
+        flash("O local já era esse — nada foi alterado.")
+        return redirect(url_for("admin.editar_jogo", match_id=match_id))
+
+    db.execute("UPDATE matches SET location = ? WHERE id = ?", (new_location, match_id))
+    db.commit()
+    flash(f"Local do jogo alterado para {new_location}." if new_location else "Local do jogo removido.")
+    return redirect(url_for("admin.editar_jogo", match_id=match_id))
+
+
 @bp.route("/jogo/<int:match_id>/apagar", methods=["POST"])
 @login_required
 def apagar_jogo(match_id):
