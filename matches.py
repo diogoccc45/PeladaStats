@@ -1,8 +1,9 @@
 from datetime import date
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from card_generator import build_match_card
 from database import get_db
 from overall_engine import apply_overall_updates, compute_goal_of_match_winners, compute_match_mvps
 from push import send_push_to_user
@@ -339,3 +340,41 @@ def apagar(match_id):
     db.commit()
     flash("Jogo apagado.")
     return redirect(url_for("matches.lista"))
+
+
+@bp.route("/<int:match_id>/cartao.png")
+@login_required
+def cartao(match_id):
+    """Shareable "FULL-TIME" result graphic — confirmed matches only (a pending
+    match has no final stats yet)."""
+    db = get_db()
+    match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    if match is None:
+        abort(404)
+    if match["status"] != "confirmado":
+        flash("O cartão do resultado só existe depois de o jogo estar confirmado.")
+        return redirect(url_for("matches.detalhe", match_id=match_id))
+
+    rows = db.execute(
+        """
+        SELECT ms.*, u.nickname
+        FROM match_stats ms JOIN users u ON u.id = ms.user_id
+        WHERE ms.match_id = ?
+        """,
+        (match_id,),
+    ).fetchall()
+
+    # Only name an MVP / Golo da Jornada when there's a single winner — a tie
+    # means nobody got it (same rule as everywhere else in the app).
+    nick_by_id = {r["user_id"]: r["nickname"] for r in rows}
+    mvps = compute_match_mvps(rows)
+    golos = compute_goal_of_match_winners(rows)
+    mvp_nick = nick_by_id[next(iter(mvps))] if len(mvps) == 1 else None
+    golo_nick = nick_by_id[next(iter(golos))] if len(golos) == 1 else None
+
+    png_bytes = build_match_card(match, rows, mvp_nickname=mvp_nick, golo_nickname=golo_nick)
+    return Response(
+        png_bytes,
+        mimetype="image/png",
+        headers={"Content-Disposition": f'inline; filename="jogo-{match["match_date"]}-peladastats.png"'},
+    )

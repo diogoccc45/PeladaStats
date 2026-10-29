@@ -97,12 +97,24 @@
       <div class="text-xs font-600 mb-1.5">Overall</div>
       <div style="height:150px;"><canvas id="chartOverall"></canvas></div>
     </div>
+    {% if summary.timeline %}
+    <div class="-mb-2">
+      <div class="flex items-center justify-between gap-2">
+        <div class="text-xs font-600">Golos e assistências</div>
+        <div class="seg-toggle" id="statMode" role="group" aria-label="Tipo de gráfico">
+          <button type="button" data-mode="game" class="active">Por jogo</button>
+          <button type="button" data-mode="total">Acumulado</button>
+        </div>
+      </div>
+      <div class="text-[10px] mt-1.5" id="statCaption" style="color:var(--text-muted)"></div>
+    </div>
+    {% endif %}
     <div>
-      <div class="text-xs font-600 mb-1.5">Golos (acumulado)</div>
+      <div class="text-xs font-600 mb-1.5">Golos</div>
       <div style="height:150px;"><canvas id="chartGoals"></canvas></div>
     </div>
     <div>
-      <div class="text-xs font-600 mb-1.5">Assistências (acumulado)</div>
+      <div class="text-xs font-600 mb-1.5">Assistências</div>
       <div style="height:150px;"><canvas id="chartAssists"></canvas></div>
     </div>
   </div>
@@ -162,11 +174,16 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <script>
   const evolution = {{ evolution_json|safe }};
+  const AVG_WINDOW = {{ avg_window }};
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  function noGames(canvasId){
+    document.getElementById(canvasId).replaceWith(Object.assign(document.createElement('div'), {className:'text-xs', style:'color:var(--text-muted)', textContent:'Ainda sem jogos confirmados.'}));
+  }
 
   function lineChart(canvasId, series, color, roundValues){
-    const ctx = document.getElementById(canvasId);
-    const muted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
-    new Chart(ctx, {
+    const muted = css('--text-muted');
+    return new Chart(document.getElementById(canvasId), {
       type: 'line',
       data: {
         labels: series.map(p => p.date),
@@ -195,14 +212,75 @@
     });
   }
 
+  // "2026-10-23" -> "23/10" (short x labels for the per-game bars)
+  const shortDate = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+
+  // One bar per game the player played + a moving-average line on top.
+  function perGameChart(canvasId, series, color, noun){
+    const muted = css('--text-muted');
+    return new Chart(document.getElementById(canvasId), {
+      data: {
+        labels: series.map(p => shortDate(p.date)),
+        datasets: [
+          {
+            type: 'bar', label: noun, data: series.map(p => p.game),
+            backgroundColor: color + 'B3', borderRadius: 4, maxBarThickness: 26, minBarLength: 3, order: 2,
+          },
+          {
+            type: 'line', label: 'Média ' + AVG_WINDOW + ' jogos', data: series.map(p => p.avg),
+            borderColor: css('--text-primary'), backgroundColor: 'transparent',
+            borderWidth: 2, tension: 0.3, pointRadius: 2, pointBackgroundColor: css('--text-primary'), order: 1,
+          },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { title: (items) => series[items[0].dataIndex].date } },
+        },
+        scales: {
+          x: { ticks: { color: muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 10 } }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: muted, font: { size: 10 }, precision: 0 }, grid: { color: 'rgba(150,162,192,0.12)' } },
+        }
+      }
+    });
+  }
+
   if(evolution.overall.length){ lineChart('chartOverall', evolution.overall, '#6EE787', true); }
-  else { document.getElementById('chartOverall').replaceWith(Object.assign(document.createElement('div'), {className:'text-xs', style:'color:var(--text-muted)', textContent:'Ainda sem jogos confirmados.'})); }
+  else { noGames('chartOverall'); }
 
-  if(evolution.goals.length){ lineChart('chartGoals', evolution.goals, '#F5B942', false); }
-  else { document.getElementById('chartGoals').replaceWith(Object.assign(document.createElement('div'), {className:'text-xs', style:'color:var(--text-muted)', textContent:'Ainda sem jogos confirmados.'})); }
+  const statCharts = {};
+  const statDefs = [
+    { id: 'chartGoals',   series: evolution.goals,   color: '#F5B942', noun: 'Golos' },
+    { id: 'chartAssists', series: evolution.assists, color: '#7BA6FF', noun: 'Assistências' },
+  ];
+  const captions = {
+    game:  'Barras: no jogo · Linha: média dos últimos ' + AVG_WINDOW + ' jogos (só os teus jogos)',
+    total: 'Total acumulado ao longo da época',
+  };
 
-  if(evolution.assists.length){ lineChart('chartAssists', evolution.assists, '#7BA6FF', false); }
-  else { document.getElementById('chartAssists').replaceWith(Object.assign(document.createElement('div'), {className:'text-xs', style:'color:var(--text-muted)', textContent:'Ainda sem jogos confirmados.'})); }
+  function renderStats(mode){
+    statDefs.forEach(def => {
+      if(!def.series.length) return;
+      if(statCharts[def.id]) statCharts[def.id].destroy();
+      statCharts[def.id] = mode === 'game'
+        ? perGameChart(def.id, def.series, def.color, def.noun)
+        : lineChart(def.id, def.series, def.color, false);
+    });
+    const caption = document.getElementById('statCaption');
+    if(caption) caption.textContent = captions[mode];
+    document.querySelectorAll('#statMode button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  }
+
+  if(evolution.goals.length){
+    renderStats('game');
+    document.querySelectorAll('#statMode button').forEach(b => b.addEventListener('click', () => renderStats(b.dataset.mode)));
+  } else {
+    statDefs.forEach(def => noGames(def.id));
+  }
 </script>
 
 {% endblock %}

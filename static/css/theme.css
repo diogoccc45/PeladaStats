@@ -152,6 +152,18 @@ label.field-label{
 }
 .card-share-btn:active{ transform:scale(0.92); background:rgba(10,14,23,0.75); }
 
+/* Small two-option switch (e.g. "Por jogo / Acumulado" on the profile charts) */
+.seg-toggle{
+  display:inline-flex; padding:2px; border-radius:999px;
+  background:var(--bg-surface-2); border:1px solid var(--border-glass);
+}
+.seg-toggle button{
+  padding:4px 11px; border-radius:999px; font-size:11px; font-weight:600;
+  color:var(--text-muted); background:transparent; border:0; cursor:pointer;
+  transition:background .15s ease, color .15s ease;
+}
+.seg-toggle button.active{ background:var(--accent-turf); color:#0A0E17; }
+
 .portrait-slot{
   background:var(--bg-surface-2);
   background-size:cover; background-position:center top;

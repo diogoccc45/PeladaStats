@@ -98,6 +98,9 @@ FORM_CONTRIBUTION_WEIGHT = 0.4
 FORM_GOAL_WEIGHT = 0.25
 FORM_ASSIST_WEIGHT = 0.15
 FORM_MVP_WEIGHT = 0.35
+CHEMISTRY_MIN_GAMES = 3  # games together needed before we call a pair's chemistry strong/weak
+CHEMISTRY_DELTA = 10     # win% points above/below the pair's own average that counts as strong/weak
+PER_GAME_AVG_WINDOW = 5  # games in the profile chart's moving average (same window as Form)
 
 
 def compute_form(timeline):
@@ -194,6 +197,58 @@ def summarize_user(user_id, matches_with_stats, mvp_map, golo_map):
     }
     summary["form"] = compute_form(timeline)
     return summary
+
+
+def _win_pct(wins, games):
+    return round(100 * wins / games) if games else None
+
+
+def get_pair_chemistry(db, a_id, b_id, summary_a=None, summary_b=None):
+    """How two players do TOGETHER (same team) and AGAINST each other, from
+    every confirmed match both played. For the verdict, the win% together is
+    compared with the average of the two players' overall win% (a pair that
+    wins clearly more often than they each normally do has good chemistry)."""
+    together = {"games": 0, "wins": 0, "draws": 0, "losses": 0, "goals_for": 0, "goals_against": 0}
+    against = {"games": 0, "a_wins": 0, "draws": 0, "b_wins": 0}
+
+    for m, rows in get_confirmed_matches_with_stats(db):
+        ra = next((r for r in rows if r["user_id"] == a_id and r["submitted"]), None)
+        rb = next((r for r in rows if r["user_id"] == b_id and r["submitted"]), None)
+        if ra is None or rb is None:
+            continue
+        result_a = _result_for(ra, m)
+        if ra["team"] == rb["team"]:
+            together["games"] += 1
+            together[{"win": "wins", "draw": "draws", "loss": "losses"}[result_a]] += 1
+            mine, theirs = (m["team_a_score"], m["team_b_score"]) if ra["team"] == "A" else (m["team_b_score"], m["team_a_score"])
+            together["goals_for"] += mine
+            together["goals_against"] += theirs
+        else:
+            against["games"] += 1
+            against[{"win": "a_wins", "draw": "draws", "loss": "b_wins"}[result_a]] += 1
+
+    games = together["games"]
+    together["win_pct"] = _win_pct(together["wins"], games)
+    together["avg_for"] = round(together["goals_for"] / games, 1) if games else None
+    together["avg_against"] = round(together["goals_against"] / games, 1) if games else None
+
+    baseline_pcts = [
+        _win_pct(sm["wins"], sm["games"]) for sm in (summary_a, summary_b) if sm and sm["games"]
+    ]
+    baseline = round(sum(baseline_pcts) / len(baseline_pcts)) if baseline_pcts else None
+
+    if games == 0:
+        verdict = None
+    elif games < CHEMISTRY_MIN_GAMES or baseline is None:
+        verdict = {"emoji": "🤷", "label": "Poucos jogos juntos para tirar conclusões"}
+    elif together["win_pct"] - baseline >= CHEMISTRY_DELTA:
+        verdict = {"emoji": "🔥", "label": "Química forte — ganham mais juntos do que sozinhos"}
+    elif together["win_pct"] - baseline <= -CHEMISTRY_DELTA:
+        verdict = {"emoji": "🧊", "label": "Química fraca — ganham menos juntos do que sozinhos"}
+    else:
+        verdict = {"emoji": "⚖️", "label": "Na média — juntos rendem como rendem sozinhos"}
+
+    return {"together": together, "against": against, "baseline_pct": baseline, "verdict": verdict}
 
 
 def get_all_summaries(db, exclude_match_id=None, up_to=None):
@@ -514,14 +569,28 @@ def get_evolution_series(db, user_id, summary):
 
     overall_series = [{"date": str(r["event_date"]), "value": r["overall_after"]} for r in overall_rows]
 
+    # One point per game the player actually played (never the group's other
+    # matches). "value" is the running total; "game" is that match alone and
+    # "avg" the moving average of the last PER_GAME_AVG_WINDOW games (fewer at
+    # the start of the season) — the profile can show either view.
     goals_series = []
     assists_series = []
     total_goals = total_assists = 0
+    recent_goals = []
+    recent_assists = []
     for t in summary["timeline"]:
         total_goals += t["goals"]
         total_assists += t["assists"]
-        goals_series.append({"date": t["date"], "value": total_goals})
-        assists_series.append({"date": t["date"], "value": total_assists})
+        recent_goals = (recent_goals + [t["goals"]])[-PER_GAME_AVG_WINDOW:]
+        recent_assists = (recent_assists + [t["assists"]])[-PER_GAME_AVG_WINDOW:]
+        goals_series.append({
+            "date": t["date"], "value": total_goals, "game": t["goals"],
+            "avg": round(sum(recent_goals) / len(recent_goals), 2),
+        })
+        assists_series.append({
+            "date": t["date"], "value": total_assists, "game": t["assists"],
+            "avg": round(sum(recent_assists) / len(recent_assists), 2),
+        })
 
     return {"overall": overall_series, "goals": goals_series, "assists": assists_series}
 

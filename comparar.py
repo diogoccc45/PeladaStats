@@ -24,6 +24,10 @@ def head_to_head():
     summary_a = summaries.get(a_id) if player_a else None
     summary_b = summaries.get(b_id) if player_b else None
 
+    chemistry = None
+    if player_a and player_b and player_a["id"] != player_b["id"]:
+        chemistry = stats_mod.get_pair_chemistry(db, a_id, b_id, summary_a, summary_b)
+
     return render_template(
         "comparar.html",
         users=users,
@@ -31,4 +35,5 @@ def head_to_head():
         player_b=player_b,
         summary_a=summary_a,
         summary_b=summary_b,
+        chemistry=chemistry,
     )

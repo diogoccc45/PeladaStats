@@ -28,6 +28,7 @@ def _render_profile(user_id):
         summary=summary,
         achievements=achievements,
         evolution_json=json.dumps(evolution),
+        avg_window=stats_mod.PER_GAME_AVG_WINDOW,
         is_me=(user_id == int(current_user.get_id())),
         rank=rank,
         next_achievement=next_achievement,
