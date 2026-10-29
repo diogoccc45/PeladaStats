@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 import overall_engine
 import stats as stats_mod
 from database import delete_user_cascade, get_db
+from push import send_push_to_user
 from settings import PES_VALIDOS, _parse_float
 from xlsx_export import build_stats_workbook
 from xlsx_import import ImportError_, import_matches_from_workbook
@@ -231,6 +232,28 @@ def editar_jogo(match_id):
     return render_template("admin/editar_jogo.html", match=match, rows=rows)
 
 
+def _match_participant_ids(db, match_id):
+    return [r["user_id"] for r in db.execute("SELECT user_id FROM match_stats WHERE match_id = ?", (match_id,))]
+
+
+def _notify_match_change(db, participant_ids, label, push_title, match_id):
+    """Tells a match's players that an admin changed something about it
+    (bell + push). The admin who made the change isn't notified about their
+    own action. match_id is None when the match no longer exists, so the
+    notification isn't wiped by the ON DELETE CASCADE."""
+    admin_id = int(current_user.get_id())
+    recipients = [uid for uid in participant_ids if uid != admin_id]
+    if not recipients:
+        return
+    db.executemany(
+        "INSERT INTO notifications (user_id, kind, label, match_id) VALUES (?, 'reminder', ?, ?)",
+        [(uid, label, match_id) for uid in recipients],
+    )
+    db.commit()
+    for uid in recipients:
+        send_push_to_user(uid, push_title, label)
+
+
 def _confirmed_order(db):
     """Confirmed match ids in the same chronological order the Overall replay uses."""
     return [
@@ -265,11 +288,18 @@ def alterar_data(match_id):
     db.execute("UPDATE matches SET match_date = ? WHERE id = ?", (new_date, match_id))
     # Notifications already sent for this match quote the old date in their
     # text ("...do jogo de 2026-10-01") — keep them in sync.
+    # Earlier "admin changed the date" notices are a record of what happened,
+    # so they keep their original old -> new wording.
     db.execute(
-        "UPDATE notifications SET label = REPLACE(label, ?, ?) WHERE match_id = ?",
+        "UPDATE notifications SET label = REPLACE(label, ?, ?) WHERE match_id = ? AND label NOT LIKE '% mudou a data do jogo:%'",
         (old_date, new_date, match_id),
     )
     db.commit()
+    _notify_match_change(
+        db, _match_participant_ids(db, match_id),
+        f"{current_user.nickname} (admin) mudou a data do jogo: {old_date} → {new_date}",
+        "📅 Data do jogo alterada", match_id,
+    )
 
     message = f"Data do jogo alterada de {old_date} para {new_date}."
     if match["status"] == "confirmado" and _confirmed_order(db) != order_before:
@@ -302,6 +332,11 @@ def alterar_local(match_id):
 
     db.execute("UPDATE matches SET location = ? WHERE id = ?", (new_location, match_id))
     db.commit()
+    if new_location:
+        label = f"{current_user.nickname} (admin) mudou o local do jogo de {match['match_date']}: {new_location}"
+    else:
+        label = f"{current_user.nickname} (admin) removeu o local do jogo de {match['match_date']}"
+    _notify_match_change(db, _match_participant_ids(db, match_id), label, "📍 Local do jogo alterado", match_id)
     flash(f"Local do jogo alterado para {new_location}." if new_location else "Local do jogo removido.")
     return redirect(url_for("admin.editar_jogo", match_id=match_id))
 
@@ -321,9 +356,16 @@ def apagar_jogo(match_id):
         flash("Só é possível apagar jogos pendentes — este já está confirmado.")
         return redirect(url_for("matches.detalhe", match_id=match_id))
 
+    participant_ids = _match_participant_ids(db, match_id)
+
     # match_stats, comments and notifications go with it (ON DELETE CASCADE).
     db.execute("DELETE FROM matches WHERE id = ?", (match_id,))
     db.commit()
+    _notify_match_change(
+        db, participant_ids,
+        f"{current_user.nickname} (admin) apagou o jogo pendente de {match['match_date']}",
+        "🗑 Jogo apagado", None,
+    )
     flash(f"Jogo de {match['match_date']} apagado.")
     return redirect(url_for("admin.painel"))
 
