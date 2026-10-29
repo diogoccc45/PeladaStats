@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from flask import Blueprint, Response, abort, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
@@ -25,7 +25,16 @@ def painel():
     db = get_db()
     users = db.execute("SELECT * FROM users ORDER BY nickname").fetchall()
     summaries = stats_mod.get_all_summaries(db)
-    matches = db.execute("SELECT * FROM matches ORDER BY match_date DESC, id DESC LIMIT 15").fetchall()
+    # The 15 most recent matches, plus every pending one however old — a
+    # forgotten pending match is exactly what the admin may want to clean up.
+    matches = db.execute(
+        """
+        SELECT * FROM matches
+        WHERE status = 'pendente'
+           OR id IN (SELECT id FROM matches ORDER BY match_date DESC, id DESC LIMIT 15)
+        ORDER BY match_date DESC, id DESC
+        """
+    ).fetchall()
 
     players = [{"user": u, "games": summaries.get(u["id"], {}).get("games", 0)} for u in users]
     return render_template("admin/painel.html", players=players, matches=matches)
@@ -220,6 +229,81 @@ def editar_jogo(match_id):
         return redirect(url_for("matches.detalhe", match_id=match_id))
 
     return render_template("admin/editar_jogo.html", match=match, rows=rows)
+
+
+def _confirmed_order(db):
+    """Confirmed match ids in the same chronological order the Overall replay uses."""
+    return [
+        r["id"] for r in db.execute(
+            "SELECT id FROM matches WHERE status = 'confirmado' ORDER BY match_date ASC, id ASC"
+        )
+    ]
+
+
+@bp.route("/jogo/<int:match_id>/data", methods=["POST"])
+@login_required
+def alterar_data(match_id):
+    _require_admin()
+    db = get_db()
+    match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    if match is None:
+        abort(404)
+
+    raw = request.form.get("match_date", "").strip()
+    try:
+        new_date = datetime.strptime(raw, "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        flash("Data inválida — escolhe uma data válida.")
+        return redirect(url_for("admin.editar_jogo", match_id=match_id))
+
+    old_date = str(match["match_date"])
+    if new_date == old_date:
+        flash("A data já era essa — nada foi alterado.")
+        return redirect(url_for("admin.editar_jogo", match_id=match_id))
+
+    order_before = _confirmed_order(db)
+    db.execute("UPDATE matches SET match_date = ? WHERE id = ?", (new_date, match_id))
+    # Notifications already sent for this match quote the old date in their
+    # text ("...do jogo de 2026-10-01") — keep them in sync.
+    db.execute(
+        "UPDATE notifications SET label = REPLACE(label, ?, ?) WHERE match_id = ?",
+        (old_date, new_date, match_id),
+    )
+    db.commit()
+
+    message = f"Data do jogo alterada de {old_date} para {new_date}."
+    if match["status"] == "confirmado" and _confirmed_order(db) != order_before:
+        # The replay orders by (date, id), so moving a confirmed match past
+        # another one changes the order Overall *would* be rebuilt in. We do
+        # NOT recompute here: that would wipe manual Overall adjustments.
+        message += (
+            " A ordem dos jogos confirmados mudou — o Overall guardado não foi mexido "
+            "(só é recalculado quando corrigires as stats de um jogo confirmado)."
+        )
+    flash(message)
+    return redirect(url_for("admin.editar_jogo", match_id=match_id))
+
+
+@bp.route("/jogo/<int:match_id>/apagar", methods=["POST"])
+@login_required
+def apagar_jogo(match_id):
+    _require_admin()
+    db = get_db()
+    match = db.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+    if match is None:
+        abort(404)
+
+    # Same rule as the creator's delete: confirmed matches have already fed
+    # the Overall engine and are never deletable this way.
+    if match["status"] != "pendente":
+        flash("Só é possível apagar jogos pendentes — este já está confirmado.")
+        return redirect(url_for("matches.detalhe", match_id=match_id))
+
+    # match_stats, comments and notifications go with it (ON DELETE CASCADE).
+    db.execute("DELETE FROM matches WHERE id = ?", (match_id,))
+    db.commit()
+    flash(f"Jogo de {match['match_date']} apagado.")
+    return redirect(url_for("admin.painel"))
 
 
 @bp.route("/exportar.xlsx")

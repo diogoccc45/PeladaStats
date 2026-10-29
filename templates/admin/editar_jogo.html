@@ -12,6 +12,16 @@
       <span class="badge badge-pendente">Pendente</span>
     {% endif %}
   </div>
+  <form method="POST" action="{{ url_for('admin.alterar_data', match_id=match.id) }}" class="surface rounded-xl p-4 mt-3">
+    <label class="field-label">📅 Data do jogo</label>
+    <div class="flex items-center gap-2 mt-1.5">
+      <input type="date" name="match_date" value="{{ match.match_date }}" required class="flex-1 px-3.5 py-3 rounded-xl text-sm">
+      <button type="submit" class="btn-secondary text-xs px-3.5 py-3 rounded-lg">Guardar data</button>
+    </div>
+    {% if match.status == 'confirmado' %}
+    <div class="text-xs mt-2" style="color:var(--text-muted)">Só muda a data — não recalcula o Overall.</div>
+    {% endif %}
+  </form>
   {% if match.status == 'confirmado' %}
   <div class="flash rounded-xl px-4 py-3 mt-3">
     Este jogo já está confirmado — ao guardares, o Overall de <strong>todos os jogadores</strong> é recalculado do zero a partir do histórico completo, para que a correção fique refletida em toda a parte (não só neste jogo).
@@ -19,7 +29,7 @@
   {% endif %}
 </div>
 
-<form method="POST" class="px-5 pt-5 flex flex-col gap-4 pb-10">
+<form method="POST" class="px-5 pt-5 flex flex-col gap-4 {{ 'pb-4' if match.status == 'pendente' else 'pb-10' }}">
   {% for r in rows %}
   <div class="surface rounded-2xl p-4 flex flex-col gap-3">
     <div class="font-600 text-sm">{{ r.nickname }} · Equipa {{ r.team }}</div>
@@ -56,5 +66,17 @@
 
   <button type="submit" class="btn-primary py-3.5 rounded-xl text-sm tracking-wide">Guardar correção</button>
 </form>
+
+{% if match.status == 'pendente' %}
+<div class="px-5 pb-10">
+  <div class="eyebrow mb-2" style="color:var(--accent-danger)">Zona de perigo</div>
+  <form method="POST" action="{{ url_for('admin.apagar_jogo', match_id=match.id) }}" class="surface rounded-2xl p-4"
+        style="border-color:rgba(255,107,107,0.3);"
+        onsubmit="return confirm('Apagar este jogo pendente? Apaga também as stats e comentários dele. Não há como desfazer.');">
+    <div class="text-xs" style="color:var(--text-muted)">Só jogos pendentes podem ser apagados. Apaga também as stats preenchidas e os comentários deste jogo.</div>
+    <button type="submit" class="btn-danger w-full py-2.5 rounded-xl text-sm mt-3">🗑 Apagar jogo pendente</button>
+  </form>
+</div>
+{% endif %}
 
 {% endblock %}
