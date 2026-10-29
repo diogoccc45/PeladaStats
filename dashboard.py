@@ -33,6 +33,9 @@ def home():
         if row is not None and not row["submitted"]:
             pending_mine += 1
 
+    movement = stats_mod.get_rank_movement(db)
+    rank_changes = movement["change"] if movement else {}
+
     players = []
     for u in users:
         s = summaries.get(u["id"], {})
@@ -58,6 +61,7 @@ def home():
                 "photo_x": u["favorite_player_image_pos_x"],
                 "photo_y": u["favorite_player_image_pos_y"],
                 "overall": round(u["overall"]),
+                "rank_change": rank_changes.get(u["id"], 0),
                 "overall_raw": u["overall"],
                 "trend_class": trend_class,
                 "trend_display": trend_display,
@@ -78,11 +82,16 @@ def home():
 
     players_sorted = sorted(players, key=lambda p: p["overall_raw"], reverse=True)
     top = players_sorted[0] if players_sorted else None
+    # Podium: top 3 by Overall, only once at least 3 players have played
+    # (with fewer, the "Nº1" card already says it all).
+    played = [p for p in players_sorted if p["games"] > 0]
+    podium = played[:3] if len(played) >= 3 else []
 
     return render_template(
         "dashboard.html",
         players_json=json.dumps(players),
         top=top,
+        podium=podium,
         pending_total=pending_total,
         pending_mine=pending_mine,
     )

@@ -58,10 +58,28 @@
 </div>
 {% endif %}
 
+{% if podium %}
+<div class="px-5 pt-6">
+  <div class="eyebrow mb-2">Pódio</div>
+  <div class="podium">
+    {% for idx in [1, 0, 2] %}
+    {% set p = podium[idx] %}
+    <a href="{{ url_for('profile.other', user_id=p.id) }}" class="podium-col podium-{{ idx + 1 }}">
+      {% if idx == 0 %}<div class="podium-crown">👑</div>{% endif %}
+      <div class="podium-avatar portrait-slot" {% if p.photo %}style="background-image:url('{{ p.photo }}')"{% endif %}>{% if not p.photo %}{{ p.initials }}{% endif %}</div>
+      <div class="podium-name">{{ p.name }}</div>
+      <div class="podium-ovr tabular">{{ p.overall }}{% if p.rank_change > 0 %}<span class="trend trend-up">▲{{ p.rank_change }}</span>{% elif p.rank_change < 0 %}<span class="trend trend-down">▼{{ -p.rank_change }}</span>{% endif %}</div>
+      <div class="podium-step">{{ idx + 1 }}</div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <div class="px-5 pt-6">
   <div class="flex items-center justify-between mb-2">
     <div class="eyebrow">Tabela completa</div>
-    <div class="text-[11px]" style="color:var(--text-muted)">toca numa coluna para ordenar</div>
+    <div class="text-[11px]" style="color:var(--text-muted)">▲▼ = posições desde o último jogo · toca numa coluna para ordenar</div>
   </div>
 
   <div class="stats-table-wrap">
@@ -102,7 +120,9 @@
     const avatar = p.photo
       ? `<div class="w-8 h-8 rounded-full portrait-slot flex-shrink-0" style="background-image:url('${p.photo}')"></div>`
       : `<div class="w-8 h-8 rounded-full flex items-center justify-center font-display font-700 text-xs flex-shrink-0" style="background:var(--bg-surface-2)">${p.initials}</div>`;
-    return `<div class="player-cell"><a href="/perfil/${p.id}" class="flex items-center gap-2.5" style="color:var(--text-primary)">${avatar}<span>${p.name}</span></a></div>`;
+    const move = p.rank_change > 0 ? `<span class="trend trend-up">▲${p.rank_change}</span>`
+      : p.rank_change < 0 ? `<span class="trend trend-down">▼${-p.rank_change}</span>` : '';
+    return `<div class="player-cell"><a href="/perfil/${p.id}" class="flex items-center gap-2.5" style="color:var(--text-primary)">${avatar}<span>${p.name}</span></a>${move}</div>`;
   }
 
   function renderTable(){

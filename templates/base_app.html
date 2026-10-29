@@ -116,7 +116,7 @@
 
 </div>
 
-{% if pending_notifications %}
+{% if pending_notifications and not pending_recap_id %}
 <div id="achievementToast" class="fixed left-1/2 z-50 flex items-start gap-3 px-4 py-3 rounded-2xl" style="top:16px; max-width:320px; transform:translateX(-50%) translateY(-160%); background:var(--bg-surface); border:1px solid var(--accent-gold); box-shadow:var(--shadow-card); transition:transform .35s ease;">
   <span class="text-xl">🏆</span>
   <div>
@@ -160,5 +160,7 @@
   })();
 </script>
 {% endif %}
+
+{% include "_recap.html" %}
 
 {% endblock %}

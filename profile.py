@@ -20,6 +20,8 @@ def _render_profile(user_id):
     achievements = stats_mod.get_achievements(summary)
     evolution = stats_mod.get_evolution_series(db, user_id, summary)
     rank = stats_mod.get_rank(db, user_id)
+    movement = stats_mod.get_rank_movement(db)
+    rank_change = movement["change"].get(user_id, 0) if movement else 0
     next_achievement = stats_mod.get_next_achievement(summary)
 
     return render_template(
@@ -31,6 +33,7 @@ def _render_profile(user_id):
         avg_window=stats_mod.PER_GAME_AVG_WINDOW,
         is_me=(user_id == int(current_user.get_id())),
         rank=rank,
+        rank_change=rank_change,
         next_achievement=next_achievement,
     )
 

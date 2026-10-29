@@ -1,12 +1,13 @@
 from datetime import date
 
-from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from card_generator import build_match_card
 from database import get_db
 from overall_engine import apply_overall_updates, compute_goal_of_match_winners, compute_match_mvps
 from push import send_push_to_user
+from recap import build_recap, mark_recaps_seen
 from stats import compute_milestone_bonuses, create_unlock_notifications
 
 bp = Blueprint("matches", __name__, url_prefix="/jogos")
@@ -378,3 +379,21 @@ def cartao(match_id):
         mimetype="image/png",
         headers={"Content-Disposition": f'inline; filename="jogo-{match["match_date"]}-peladastats.png"'},
     )
+
+
+@bp.route("/<int:match_id>/resumo.json")
+@login_required
+def resumo(match_id):
+    """Data for the post-match recap overlay — only for confirmed matches the
+    current player took part in."""
+    recap = build_recap(get_db(), match_id, int(current_user.get_id()))
+    if recap is None:
+        return jsonify({"error": "Resumo indisponível para este jogo."}), 404
+    return jsonify(recap)
+
+
+@bp.route("/resumo/visto", methods=["POST"])
+@login_required
+def resumo_visto():
+    mark_recaps_seen(get_db(), int(current_user.get_id()))
+    return ("", 204)

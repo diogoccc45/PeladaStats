@@ -8,7 +8,7 @@
     <div class="flex items-start justify-between relative z-10">
       <div>
         <div class="ovr-badge font-display font-700 text-5xl leading-none" style="color:var(--accent-turf)">{{ profile_user.overall|round|int }}</div>
-        <div class="eyebrow mt-1">Overall {% if rank %}<span class="trend trend-flat">#{{ rank }} geral</span>{% endif %}</div>
+        <div class="eyebrow mt-1">Overall {% if rank %}<span class="trend trend-flat">#{{ rank }} geral</span>{% if rank_change > 0 %}<span class="trend trend-up">▲{{ rank_change }}</span>{% elif rank_change < 0 %}<span class="trend trend-down">▼{{ -rank_change }}</span>{% endif %}{% endif %}</div>
       </div>
       <div class="w-16 h-16 rounded-xl portrait-slot flex items-center justify-center font-display font-700 text-xl" {% if profile_user.favorite_player_image_url %}style="background-image:url('{{ profile_user.favorite_player_image_url }}'); background-size:{{ (profile_user.favorite_player_image_zoom * 100)|round|int }}%; background-position:{{ profile_user.favorite_player_image_pos_x }}% {{ profile_user.favorite_player_image_pos_y }}%;"{% endif %}>
         {% if not profile_user.favorite_player_image_url %}{{ profile_user.nickname[:2]|upper }}{% endif %}
@@ -136,15 +136,48 @@
   <div class="eyebrow mb-2">Conquistas</div>
   <div class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
     {% for a in achievements %}
-    <div class="achievement {{ '' if a.unlocked else 'locked' }}">
+    <button type="button" class="achievement {{ '' if a.unlocked else 'locked' }}"
+            data-icon="{{ a.icon }}" data-label="{{ a.label }}" data-desc="{{ a.desc }}"
+            data-unlocked="{{ 1 if a.unlocked else 0 }}"{% if a.count is defined %} data-count="{{ a.count }}"{% endif %}>
       {% if not a.unlocked %}<span class="lock-badge">🔒</span>{% endif %}
       <div class="icon">{{ a.icon }}</div>
       <div class="text-[10px] font-600 leading-tight">{{ a.label }}</div>
       {% if a.count is defined %}<div class="text-[10px] font-700 tabular" style="color:var(--accent-gold)">{{ a.count }}</div>{% endif %}
-    </div>
+    </button>
     {% endfor %}
   </div>
+  <div class="text-[10px] mt-1.5" style="color:var(--text-muted)">Toca numa conquista para ver como se desbloqueia.</div>
 </div>
+
+<div id="achievementModal" class="hidden fixed inset-0 items-end justify-center" style="background:rgba(4,6,11,0.75); z-index:70;">
+  <div class="w-full max-w-md surface rounded-t-2xl p-5 pb-8 text-center">
+    <div class="text-4xl" id="achModalIcon"></div>
+    <div class="font-display font-700 text-xl mt-2" id="achModalLabel"></div>
+    <div class="text-xs mt-1 font-600" id="achModalState"></div>
+    <div class="text-sm mt-3" style="color:var(--text-muted)" id="achModalDesc"></div>
+    <button type="button" id="achModalClose" class="btn-secondary w-full py-2.5 rounded-xl text-sm mt-5">Fechar</button>
+  </div>
+</div>
+<script>
+  (function(){
+    const modal = document.getElementById('achievementModal');
+    function close(){ modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    document.querySelectorAll('button.achievement').forEach(btn => btn.addEventListener('click', () => {
+      document.getElementById('achModalIcon').textContent = btn.dataset.icon;
+      document.getElementById('achModalLabel').textContent = btn.dataset.label;
+      const unlocked = btn.dataset.unlocked === '1';
+      const state = document.getElementById('achModalState');
+      const count = btn.dataset.count;
+      state.textContent = unlocked ? ('Desbloqueada' + (count ? ' · ' + count + '×' : '')) : '🔒 Por desbloquear';
+      state.style.color = unlocked ? 'var(--accent-turf)' : 'var(--text-muted)';
+      document.getElementById('achModalDesc').textContent = btn.dataset.desc;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }));
+    modal.addEventListener('click', e => { if(e.target === modal) close(); });
+    document.getElementById('achModalClose').addEventListener('click', close);
+  })();
+</script>
 
 <div class="px-5 pb-8">
   <div class="eyebrow mb-2">Histórico de jogos</div>

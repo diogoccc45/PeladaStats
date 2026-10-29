@@ -36,6 +36,10 @@
   </form>
   {% endif %}
 
+  {% if match.status == 'confirmado' and my_row %}
+  <button type="button" onclick="openRecap({{ match.id }})" class="btn-secondary w-full py-2.5 rounded-xl text-sm mt-2.5">📺 Ver o teu resumo do jogo</button>
+  {% endif %}
+
   {% if current_user.is_admin %}
   <a href="{{ url_for('admin.editar_jogo', match_id=match.id) }}" class="btn-secondary block text-center py-2.5 rounded-xl text-sm mt-2.5">🛠 Admin: editar jogo</a>
   {% endif %}

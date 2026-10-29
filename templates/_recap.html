@@ -1,0 +1,185 @@
+{# Post-match "fim de jogo" recap. Filled from /jogos/<id>/resumo.json by openRecap().
+   Opens by itself once per confirmed match (pending_recap_id, see recap.py)
+   and on demand from the match page. #}
+<div id="recapOverlay" class="recap hidden" role="dialog" aria-modal="true" aria-label="Resumo do jogo">
+  <div class="recap-scroll"><div class="recap-inner" id="recapBody"></div></div>
+</div>
+
+<script>
+(function(){
+  const overlay = document.getElementById('recapOverlay');
+  const body = document.getElementById('recapBody');
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const MAX_UNLOCKS = 4;   // keep the screen tidy; the bell lists every unlock
+  let rafId = null;
+
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmtDelta = d => (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d).toFixed(2);
+  const places = n => Math.abs(n) === 1 ? '1 posição' : Math.abs(n) + ' posições';
+
+  function confetti(){
+    const colors = ['#6EE787', '#F5B942', '#F4F7FC', '#3E8F5B'];
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed; inset:0; pointer-events:none; z-index:90; overflow:hidden;';
+    document.body.appendChild(box);
+    for(let i = 0; i < 70; i++){
+      const p = document.createElement('div');
+      const size = 6 + Math.random() * 6;
+      p.style.cssText = `position:absolute; top:-20px; left:${Math.random() * 100}%; width:${size}px; height:${size * 0.4}px;` +
+        `background:${colors[Math.floor(Math.random() * colors.length)]}; opacity:${0.7 + Math.random() * 0.3};` +
+        `border-radius:2px; animation:confetti-fall ${2.2 + Math.random() * 1.4}s ease-in forwards; animation-delay:${Math.random() * 0.6}s;`;
+      box.appendChild(p);
+    }
+    setTimeout(() => box.remove(), 4800);
+  }
+
+  function countUp(el, from, to, delayMs, durationMs){
+    const show = v => { el.textContent = Math.round(v); };
+    show(from);
+    if(reduceMotion || from === to){ show(to); return; }
+    const start = performance.now() + delayMs;
+    const tick = now => {
+      const t = Math.min(1, Math.max(0, (now - start) / durationMs));
+      show(from + (to - from) * (1 - Math.pow(1 - t, 3)));
+      rafId = t < 1 ? requestAnimationFrame(tick) : null;
+    };
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function render(r){
+    const mine = r.my_team === 'A' ? 'recap-team-mine' : '';
+    const theirs = r.my_team === 'B' ? 'recap-team-mine' : '';
+    const resultText = {win: 'VITÓRIA', draw: 'EMPATE', loss: 'DERROTA'}[r.result];
+    const steps = [];
+
+    steps.push(`
+      <div class="recap-head">
+        <div class="eyebrow">Fim de jogo</div>
+        <div class="recap-sub">${esc(r.match.date)}${r.match.location ? ' · ' + esc(r.match.location) : ''}</div>
+      </div>`);
+
+    steps.push(`
+      <div class="recap-score">
+        <div class="${mine}"><span>Equipa A</span><b>${esc(r.match.score_a)}</b></div>
+        <i>—</i>
+        <div class="${theirs}"><span>Equipa B</span><b>${esc(r.match.score_b)}</b></div>
+      </div>
+      <div class="recap-result">${resultText}</div>`);
+
+    if(r.overall){
+      const o = r.overall;
+      const dir = o.delta > 0 ? 'up' : o.delta < 0 ? 'down' : 'flat';
+      const arrow = o.delta > 0 ? '▲' : o.delta < 0 ? '▼' : '=';
+      steps.push(`
+        <div class="recap-overall">
+          <div class="eyebrow">Overall</div>
+          <div class="recap-ovr font-display tabular" id="recapOvr">${Math.round(o.before)}</div>
+          <div class="recap-delta recap-delta-${dir}" style="animation-delay:calc(var(--i) * var(--recap-gap) + 1.5s)">${arrow} ${fmtDelta(o.delta)}</div>
+          <div class="recap-ovr-exact tabular">${o.before.toFixed(2)} → ${o.after.toFixed(2)}</div>
+        </div>`);
+    }
+
+    steps.push(`
+      <div class="recap-tiles">
+        <div class="recap-tile"><b class="font-display tabular">${esc(r.goals)}</b><span>⚽ Golos</span></div>
+        <div class="recap-tile"><b class="font-display tabular">${esc(r.assists)}</b><span>🎯 Assistências</span></div>
+      </div>`);
+
+    if(r.was_mvp || r.was_golo){
+      steps.push(`<div class="recap-awards">` +
+        (r.was_mvp ? `<div class="recap-award">🏆 MVP do jogo</div>` : '') +
+        (r.was_golo ? `<div class="recap-award">🎯 Golo da Jornada</div>` : '') +
+        `</div>`);
+    }
+
+    if(r.rank){
+      const c = r.rank.change;
+      const text = c > 0 ? `<span class="recap-rank-up">▲ Subiste ${places(c)}</span>`
+        : c < 0 ? `<span class="recap-rank-down">▼ Desceste ${places(c)}</span>`
+        : `<span>Manténs a posição</span>`;
+      steps.push(`
+        <div class="recap-rank">
+          <div class="eyebrow">Classificação</div>
+          <div class="recap-rank-line">
+            ${c !== 0 ? `<span class="recap-rank-old tabular">#${r.rank.before}</span><span class="recap-rank-arrow">→</span>` : ''}
+            <b class="font-display tabular">#${r.rank.after}</b>
+          </div>
+          <div class="recap-rank-text">${text}</div>
+        </div>`);
+    }
+
+    if(r.unlocks.length){
+      const shown = r.unlocks.slice(0, MAX_UNLOCKS), extra = r.unlocks.length - shown.length;
+      steps.push(`
+        <div class="recap-unlocks">
+          <div class="eyebrow">${r.unlocks.length === 1 ? 'Novo desbloqueio' : 'Novos desbloqueios'}</div>
+          ${shown.map(u => `<div class="recap-unlock ${u.no_bonus ? 'recap-unlock-plain' : ''}"><span>${esc(u.icon)}</span><b>${esc(u.label)}</b></div>`).join('')}
+          ${extra > 0 ? `<div class="recap-more">+${extra} no sino de notificações</div>` : ''}
+        </div>`);
+    }
+
+    steps.push(`
+      <div class="recap-actions">
+        <button type="button" class="btn-primary w-full py-3 rounded-xl text-base" id="recapClose">Continuar</button>
+        <a href="/jogos/${r.match.id}/cartao.png" download="jogo-${esc(r.match.date)}-peladastats.png" class="btn-secondary block text-center w-full py-2.5 rounded-xl text-sm">📤 Partilhar resultado</a>
+      </div>`);
+
+    body.innerHTML = steps.map((html, i) => `<div class="recap-step" style="--i:${i}">${html}</div>`).join('');
+    body.lastElementChild.classList.add('recap-sticky');   // "Continuar" stays reachable when the content scrolls
+    overlay.classList.remove('recap-win', 'recap-draw', 'recap-loss');
+    overlay.classList.add('recap-' + r.result);
+    overlay.classList.remove('recap-skip');
+    overlay.scrollTop = 0;
+    overlay.querySelector('.recap-scroll').scrollTop = 0;
+    document.getElementById('recapClose').addEventListener('click', closeRecap);
+
+    if(r.overall){
+      const gap = parseFloat(getComputedStyle(overlay).getPropertyValue('--recap-gap')) * 1000 || 300;
+      countUp(document.getElementById('recapOvr'), r.overall.before, r.overall.after, 2 * gap + 150, 1300);
+    }
+    const celebrate = r.result === 'win' || r.was_mvp || r.was_golo || r.unlocks.some(u => !u.no_bonus);
+    if(celebrate && !reduceMotion){ setTimeout(confetti, 500); }
+  }
+
+  function skip(e){
+    if(e.target.closest('button, a')) return;
+    overlay.classList.add('recap-skip');
+    if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+    const el = document.getElementById('recapOvr');
+    if(el && el.dataset.final){ el.textContent = el.dataset.final; }
+  }
+
+  function closeRecap(){
+    overlay.classList.add('hidden');
+    document.body.style.overflow = '';
+    body.innerHTML = '';
+    if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+  }
+
+  // auto = the pop-up that follows a freshly confirmed match: mark it as seen
+  // as soon as the server answers, so it never comes back on the next page.
+  window.openRecap = function(matchId, auto){
+    fetch('/jogos/' + matchId + '/resumo.json', { headers: { 'Accept': 'application/json' } })
+      .then(res => {
+        if(auto){ fetch('/jogos/resumo/visto', { method: 'POST' }).catch(() => {}); }
+        return res.ok ? res.json() : null;
+      })
+      .then(data => {
+        if(!data) return;
+        render(data);
+        const el = document.getElementById('recapOvr');
+        if(el && data.overall){ el.dataset.final = Math.round(data.overall.after); }
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      })
+      .catch(() => {});
+  };
+
+  overlay.addEventListener('pointerdown', skip);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !overlay.classList.contains('hidden')) closeRecap(); });
+
+  {% if pending_recap_id %}
+  window.openRecap({{ pending_recap_id }}, true);
+  {% endif %}
+})();
+</script>

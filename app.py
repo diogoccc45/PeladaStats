@@ -83,6 +83,13 @@ def create_app():
             )
             db.commit()
 
+        # Post-match recap waiting for this player (see recap.py). Shown as a
+        # full-screen overlay, which also covers the unlock toast for the
+        # same match — the recap lists those unlocks itself.
+        from recap import pending_recap_match_id
+
+        pending_recap_id = pending_recap_match_id(db, uid)
+
         unread_count = db.execute(
             "SELECT COUNT(*) c FROM notifications WHERE user_id = ? AND seen_at IS NULL", (uid,)
         ).fetchone()["c"]
@@ -96,6 +103,7 @@ def create_app():
 
         return {
             "pending_notifications": to_celebrate,
+            "pending_recap_id": pending_recap_id,
             "unread_count": unread_count,
             "recent_notifications": recent_notifications,
             "vapid_public_key": vapid_public_key,

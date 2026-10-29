@@ -23,19 +23,38 @@ FORM_LEVELS = [
 # bonus, same spirit as the match-result penalties: always full strength.
 RECORD_BONUS = 0.1
 
+# Streak-type achievements are measured over the player's OWN games, in order
+# (games he skipped don't break or extend a streak).
+FIRE_STREAK_GAMES = 4    # "Em chamas": this many games in a row with at least 1 goal
+DROUGHT_GAMES = 4        # "Seca": this many games in a row without scoring
+CARRY_MIN_GOALS = 3      # "Carregou a equipa": at least this many goals...
+CARRY_TEAM_SHARE = 0.5   # ...and at least this share of his team's goals
+
+# Per-achievement extras:
+#   desc        — one-liner shown when the player taps the achievement
+#   count_field — also show how many times it has happened (summary field)
+#   no_bonus    — unlocking it does NOT give the RECORD_BONUS to Overall
+#   secret      — hidden from the list until it's unlocked
+# Counter achievements (Golo da Jornada, Em chamas, ...) only pay the Overall
+# bonus the FIRST time they unlock — repeats just raise the counter.
 ACHIEVEMENTS = [
-    {"id": "primeiro_golo", "label": "Primeiro golo", "icon": "⚽", "check": lambda s: s["goals"] >= 1},
-    {"id": "primeira_assistencia", "label": "Primeira assistência", "icon": "🎯", "check": lambda s: s["assists"] >= 1},
-    {"id": "primeiro_mvp", "label": "Primeiro MVP", "icon": "⭐", "check": lambda s: s["mvp"] >= 1},
-    {"id": "10_golos", "label": "10 golos", "icon": "⚽", "check": lambda s: s["goals"] >= 10, "metric": "goals", "threshold": 10},
-    {"id": "25_golos", "label": "25 golos", "icon": "⚽", "check": lambda s: s["goals"] >= 25, "metric": "goals", "threshold": 25},
-    {"id": "50_golos", "label": "50 golos", "icon": "⚽", "check": lambda s: s["goals"] >= 50, "metric": "goals", "threshold": 50},
-    {"id": "25_assistencias", "label": "25 assistências", "icon": "🎯", "check": lambda s: s["assists"] >= 25, "metric": "assists", "threshold": 25},
-    {"id": "10_vitorias", "label": "10 vitórias", "icon": "🏆", "check": lambda s: s["wins"] >= 10, "metric": "wins", "threshold": 10},
-    {"id": "hat_trick", "label": "Hat-trick", "icon": "🎩", "check": lambda s: s["hat_trick"]},
-    {"id": "poquer", "label": "Póquer", "icon": "🃏", "check": lambda s: s["poker"]},
-    {"id": "golo_da_jornada", "label": "Golo da Jornada", "icon": "🎯", "check": lambda s: s["golo_da_jornada"] >= 1, "count_field": "golo_da_jornada"},
-    {"id": "100_participacoes", "label": "100 participações em golo", "icon": "🔥", "check": lambda s: s["goal_involvements"] >= 100, "metric": "goal_involvements", "threshold": 100},
+    {"id": "primeiro_golo", "label": "Primeiro golo", "icon": "⚽", "desc": "Marca o teu primeiro golo.", "check": lambda s: s["goals"] >= 1},
+    {"id": "primeira_assistencia", "label": "Primeira assistência", "icon": "🎯", "desc": "Faz a tua primeira assistência.", "check": lambda s: s["assists"] >= 1},
+    {"id": "primeiro_mvp", "label": "Primeiro MVP", "icon": "⭐", "desc": "Sê eleito MVP de um jogo.", "check": lambda s: s["mvp"] >= 1},
+    {"id": "10_golos", "label": "10 golos", "icon": "⚽", "desc": "Chega aos 10 golos.", "check": lambda s: s["goals"] >= 10, "metric": "goals", "threshold": 10},
+    {"id": "25_golos", "label": "25 golos", "icon": "⚽", "desc": "Chega aos 25 golos.", "check": lambda s: s["goals"] >= 25, "metric": "goals", "threshold": 25},
+    {"id": "50_golos", "label": "50 golos", "icon": "⚽", "desc": "Chega aos 50 golos.", "check": lambda s: s["goals"] >= 50, "metric": "goals", "threshold": 50},
+    {"id": "25_assistencias", "label": "25 assistências", "icon": "🎯", "desc": "Chega às 25 assistências.", "check": lambda s: s["assists"] >= 25, "metric": "assists", "threshold": 25},
+    {"id": "10_vitorias", "label": "10 vitórias", "icon": "🏆", "desc": "Chega às 10 vitórias.", "check": lambda s: s["wins"] >= 10, "metric": "wins", "threshold": 10},
+    {"id": "hat_trick", "label": "Hat-trick", "icon": "🎩", "desc": "Marca 3 golos no mesmo jogo.", "check": lambda s: s["hat_trick"]},
+    {"id": "poquer", "label": "Póquer", "icon": "🃏", "desc": "Marca 4 golos no mesmo jogo.", "check": lambda s: s["poker"]},
+    {"id": "golo_da_jornada", "label": "Golo da Jornada", "icon": "🎯", "desc": "Vê o teu golo eleito o melhor do jogo. O número mostra quantas vezes.", "check": lambda s: s["golo_da_jornada"] >= 1, "count_field": "golo_da_jornada"},
+    {"id": "100_participacoes", "label": "100 participações em golo", "icon": "🔥", "desc": "Chega às 100 participações em golo (golos + assistências).", "check": lambda s: s["goal_involvements"] >= 100, "metric": "goal_involvements", "threshold": 100},
+    {"id": "em_chamas", "label": "Em chamas", "icon": "☄️", "desc": f"Marca em {FIRE_STREAK_GAMES} jogos seguidos. O número mostra quantas sequências já fizeste.", "check": lambda s: s["em_chamas"] >= 1, "count_field": "em_chamas"},
+    {"id": "carregou_equipa", "label": "Carregou a equipa", "icon": "💪", "desc": f"Marca {CARRY_MIN_GOALS} ou mais golos e pelo menos metade dos golos da tua equipa num jogo. O número mostra quantas vezes.", "check": lambda s: s["carregou_equipa"] >= 1, "count_field": "carregou_equipa"},
+    {"id": "50_jogos", "label": "50 jogos", "icon": "🎖️", "desc": "Disputa 50 jogos.", "check": lambda s: s["games"] >= 50, "metric": "games", "threshold": 50},
+    {"id": "100_jogos", "label": "100 jogos", "icon": "💯", "desc": "Disputa 100 jogos.", "check": lambda s: s["games"] >= 100, "metric": "games", "threshold": 100},
+    {"id": "seca", "label": "Seca", "icon": "🌵", "desc": f"{DROUGHT_GAMES} jogos seguidos sem marcar. Não conta para o Overall. O número mostra quantas secas já tiveste.", "check": lambda s: s["seca"] >= 1, "count_field": "seca", "no_bonus": True, "secret": True},
 ]
 
 
@@ -79,6 +98,20 @@ def compute_match_mvp_map(matches_with_stats):
 def compute_match_golo_map(matches_with_stats):
     """{match_id: {user_id que marcou o Golo da Jornada nesse jogo}}"""
     return {m["id"]: compute_goal_of_match_winners(rows) for m, rows in matches_with_stats}
+
+
+def count_runs(items, predicate, min_len):
+    """How many separate runs of at least min_len consecutive items satisfy
+    predicate. A run that keeps going past min_len still counts once."""
+    runs = cur = 0
+    for it in items:
+        if predicate(it):
+            cur += 1
+            if cur == min_len:
+                runs += 1
+        else:
+            cur = 0
+    return runs
 
 
 def longest_streak(items, predicate):
@@ -173,6 +206,7 @@ def summarize_user(user_id, matches_with_stats, mvp_map, golo_map):
                 "result": result,
                 "goals": row["goals"],
                 "assists": row["assists"],
+                "team_goals": m["team_a_score"] if row["team"] == "A" else m["team_b_score"],
                 "was_mvp": was_mvp,
                 "was_golo_da_jornada": was_golo,
             }
@@ -193,6 +227,12 @@ def summarize_user(user_id, matches_with_stats, mvp_map, golo_map):
         "avg_assists": (assists / games) if games else 0,
         "hat_trick": any(t["goals"] >= 3 for t in timeline),
         "poker": any(t["goals"] >= 4 for t in timeline),
+        "em_chamas": count_runs(timeline, lambda t: t["goals"] >= 1, FIRE_STREAK_GAMES),
+        "seca": count_runs(timeline, lambda t: t["goals"] == 0, DROUGHT_GAMES),
+        "carregou_equipa": sum(
+            1 for t in timeline
+            if t["goals"] >= CARRY_MIN_GOALS and t["goals"] >= CARRY_TEAM_SHARE * t["team_goals"]
+        ),
         "timeline": timeline,
     }
     summary["form"] = compute_form(timeline)
@@ -270,7 +310,13 @@ def get_player_summary(db, user_id, exclude_match_id=None, up_to=None):
 def get_achievements(summary):
     achievements = []
     for a in ACHIEVEMENTS:
-        entry = {"id": a["id"], "label": a["label"], "icon": a["icon"], "unlocked": bool(a["check"](summary))}
+        unlocked = bool(a["check"](summary))
+        if a.get("secret") and not unlocked:
+            continue  # secret achievements stay hidden until earned
+        entry = {
+            "id": a["id"], "label": a["label"], "icon": a["icon"], "desc": a.get("desc", ""),
+            "unlocked": unlocked, "no_bonus": bool(a.get("no_bonus")),
+        }
         if "count_field" in a:
             entry["count"] = summary[a["count_field"]]
         achievements.append(entry)
@@ -310,6 +356,59 @@ def get_rank(db, user_id):
         if r["id"] == user_id:
             return i + 1
     return None
+
+
+def get_rank_movement(db, match_id=None):
+    """Leaderboard positions right before and right after one match (default:
+    the most recently confirmed one), rebuilt from overall_history so it
+    needs no extra stored data. change[user_id] > 0 means the player climbed
+    that many places; < 0 means they dropped.
+
+    Everyone who has no history yet counts at OVERALL_START, same as the live
+    ranking (get_rank) — that keeps the "before" and "after" lists made of
+    the same people, so the comparison is fair."""
+    if match_id is None:
+        row = db.execute(
+            "SELECT match_id FROM overall_history WHERE match_id IS NOT NULL ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return None
+        match_id = row["match_id"]
+
+    bounds = db.execute(
+        "SELECT MIN(id) lo, MAX(id) hi FROM overall_history WHERE match_id = ?", (match_id,)
+    ).fetchone()
+    if bounds["lo"] is None:
+        return None
+
+    user_ids = [r["id"] for r in db.execute("SELECT id FROM users")]
+
+    def snapshot(op, history_id):
+        rows = db.execute(
+            f"""
+            SELECT user_id, overall_after FROM overall_history
+            WHERE id IN (SELECT MAX(id) FROM overall_history WHERE id {op} ? GROUP BY user_id)
+            """,
+            (history_id,),
+        ).fetchall()
+        return {r["user_id"]: r["overall_after"] for r in rows}
+
+    values_before = snapshot("<", bounds["lo"])
+    values_after = snapshot("<=", bounds["hi"])
+
+    def ranks(values):
+        order = sorted(user_ids, key=lambda u: (-values.get(u, OVERALL_START), u))
+        return {u: i + 1 for i, u in enumerate(order)}
+
+    rank_before, rank_after = ranks(values_before), ranks(values_after)
+    return {
+        "match_id": match_id,
+        "rank_before": rank_before,
+        "rank_after": rank_after,
+        "change": {u: rank_before[u] - rank_after[u] for u in user_ids},
+        "overall_before": values_before,
+        "overall_after": values_after,
+    }
 
 
 def get_records(db, exclude_match_id=None, up_to=None):
@@ -480,7 +579,10 @@ def _detect_unlocks(db, match_id, up_to=None):
         if (after["value"], after["user_id"]) == (before["value"], before["user_id"]):
             continue
         if after["user_id"] in participant_ids:
-            unlocks.append({"user_id": after["user_id"], "label": RECORD_LABELS[key]})
+            unlocks.append({
+                "user_id": after["user_id"], "label": RECORD_LABELS[key],
+                "kind": "record", "icon": "📈", "no_bonus": False,
+            })
 
     # Achievements: anyone in this match who crossed from locked to unlocked
     # on any achievement, purely because of this match.
@@ -490,7 +592,10 @@ def _detect_unlocks(db, match_id, up_to=None):
         unlocked_before = {a["id"] for a in get_achievements(summary_before) if a["unlocked"]}
         for a in get_achievements(summary_after):
             if a["unlocked"] and a["id"] not in unlocked_before:
-                unlocks.append({"user_id": user_id, "label": a["label"]})
+                unlocks.append({
+                    "user_id": user_id, "label": a["label"], "kind": "achievement",
+                    "icon": a["icon"], "desc": a["desc"], "no_bonus": a["no_bonus"],
+                })
 
     return unlocks
 
@@ -500,6 +605,8 @@ def compute_milestone_bonuses(db, match_id, up_to=None):
     either set a new global record or unlocked a new achievement."""
     bonuses = {}
     for u in _detect_unlocks(db, match_id, up_to=up_to):
+        if u["no_bonus"]:
+            continue
         bonuses[u["user_id"]] = bonuses.get(u["user_id"], 0) + RECORD_BONUS
     return bonuses
 
@@ -515,10 +622,18 @@ def create_unlock_notifications(db, match_id):
     from push import send_push_to_user
 
     unlocks = _detect_unlocks(db, match_id)
-    for u in unlocks:
+    celebrated = [u for u in unlocks if not u["no_bonus"]]
+    gags = [u for u in unlocks if u["no_bonus"]]  # e.g. Seca: tell them, but don't celebrate
+
+    for u in celebrated:
         db.execute(
             "INSERT INTO notifications (user_id, label, match_id) VALUES (?, ?, ?)",
             (u["user_id"], u["label"], match_id),
+        )
+    for u in gags:
+        db.execute(
+            "INSERT INTO notifications (user_id, kind, label, match_id) VALUES (?, 'reminder', ?, ?)",
+            (u["user_id"], f"{u['icon']} {u['label']}: {u['desc'].split('. ')[0].rstrip('.')}", match_id),
         )
     if unlocks:
         db.commit()
@@ -526,11 +641,13 @@ def create_unlock_notifications(db, match_id):
         # coisas no mesmo jogo (comum no primeiro jogo de alguém) — cada
         # desbloqueio continua a aparecer como linha própria no sino.
         by_user = {}
-        for u in unlocks:
+        for u in celebrated:
             by_user.setdefault(u["user_id"], []).append(u["label"])
         for user_id, labels in by_user.items():
             title = "🏆 Conquista desbloqueada!" if len(labels) == 1 else "🏆 Conquistas desbloqueadas!"
             send_push_to_user(user_id, title, " · ".join(labels))
+        for u in gags:
+            send_push_to_user(u["user_id"], f"{u['icon']} {u['label']}", u["desc"].split(". ")[0].rstrip("."))
     return unlocks
 
 

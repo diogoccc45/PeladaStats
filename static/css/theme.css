@@ -283,6 +283,35 @@ table.stats-table tbody tr:last-child td{ border-bottom:none; }
 .trend-down{ color:var(--accent-danger); }
 .trend-flat{ color:var(--text-muted); }
 
+/* Podium (dashboard) */
+.podium{ display:flex; align-items:flex-end; gap:8px; }
+.podium-col{
+  flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; text-align:center;
+  color:var(--text-primary); position:relative;
+}
+.podium-crown{ font-size:20px; line-height:1; margin-bottom:2px; }
+.podium-avatar{
+  width:56px; height:56px; border-radius:999px; flex-shrink:0;
+  border:3px solid var(--podium-color);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:18px; color:var(--text-muted);
+}
+.podium-1{ --podium-color:#F5B942; }
+.podium-2{ --podium-color:#AEB9D6; }
+.podium-3{ --podium-color:#D58B4B; }
+.podium-1 .podium-avatar{ width:68px; height:68px; font-size:22px; box-shadow:0 0 22px -4px rgba(245,185,66,0.55); }
+.podium-name{ font-size:12px; font-weight:600; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:6px; }
+.podium-ovr{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:22px; line-height:1.1; color:var(--accent-turf); }
+.podium-step{
+  width:100%; margin-top:6px; border-radius:12px 12px 0 0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:26px; color:#0A0E17;
+  background:linear-gradient(180deg, var(--podium-color), color-mix(in srgb, var(--podium-color) 55%, #0A0E17));
+}
+.podium-1 .podium-step{ height:66px; }
+.podium-2 .podium-step{ height:48px; }
+.podium-3 .podium-step{ height:36px; }
+
 /* Pending-matches banner */
 .pending-banner{
   border-radius:16px; padding:14px 16px;
@@ -302,6 +331,7 @@ table.stats-table tbody tr:last-child td{ border-bottom:none; }
   border:1px solid var(--border-glass); border-radius:16px; padding:10px;
   text-align:center; background:var(--bg-surface);
 }
+button.achievement{ font:inherit; color:inherit; cursor:pointer; }
 .achievement.locked{ opacity:.4; filter:grayscale(.75); }
 .achievement .icon{ font-size:24px; }
 .achievement .lock-badge{
@@ -441,4 +471,103 @@ table.stats-table tbody tr:last-child td{ border-bottom:none; }
 }
 .roster-pill.checked .check-box{
   background:var(--accent-turf); border-color:var(--accent-turf); color:#04160B;
+}
+
+/* Falling confetti piece (used by the unlock toast and the match recap) */
+@keyframes confetti-fall{
+  0%{ transform:translateY(0) rotate(0deg); }
+  100%{ transform:translateY(110vh) rotate(720deg); }
+}
+
+/* Post-match recap ("fim de jogo") overlay */
+.recap{
+  --recap-accent:var(--accent-turf);
+  --recap-gap:.3s;
+  position:fixed; inset:0; z-index:80;
+  background:
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--recap-accent) 26%, transparent), transparent 60%),
+    var(--bg-primary);
+  animation:fade-in .3s ease;
+}
+.recap.hidden{ display:none; }
+.recap-win{ --recap-accent:var(--accent-turf); }
+.recap-draw{ --recap-accent:var(--accent-gold); }
+.recap-loss{ --recap-accent:var(--accent-danger); }
+.recap-scroll{ height:100%; overflow-y:auto; overscroll-behavior:contain; }
+.recap-inner{
+  max-width:420px; margin:0 auto; min-height:100%;
+  display:flex; flex-direction:column; justify-content:center; gap:16px;
+  padding:24px 20px 0;
+  text-align:center;
+}
+.recap-step{ animation:recap-rise .55s cubic-bezier(.2,.8,.2,1) both; animation-delay:calc(var(--i) * var(--recap-gap)); }
+@keyframes recap-rise{
+  from{ opacity:0; transform:translateY(18px) scale(.97); }
+  to{ opacity:1; transform:none; }
+}
+.recap-skip .recap-step, .recap-skip .recap-delta{ animation:none !important; opacity:1; transform:none; }
+@media (prefers-reduced-motion: reduce){
+  .recap, .recap-step, .recap-delta{ animation:none !important; opacity:1; }
+}
+
+.recap-sub{ font-size:12px; color:var(--text-muted); margin-top:2px; }
+.recap-score{ display:flex; align-items:center; justify-content:center; gap:18px; }
+.recap-score i{ font-style:normal; font-size:26px; color:var(--text-muted); }
+.recap-score div{ display:flex; flex-direction:column; align-items:center; opacity:.62; }
+.recap-score div.recap-team-mine{ opacity:1; }
+.recap-score span{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); }
+.recap-score b{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:56px; line-height:1; font-variant-numeric:tabular-nums; }
+.recap-team-mine b{ color:var(--recap-accent); }
+.recap-result{
+  display:inline-block; margin-top:10px; padding:4px 14px; border-radius:999px;
+  font-family:'Rajdhani',sans-serif; font-weight:700; letter-spacing:.14em; font-size:13px;
+  color:var(--recap-accent); border:1px solid var(--recap-accent);
+  background:color-mix(in srgb, var(--recap-accent) 12%, transparent);
+}
+
+.recap-ovr{ font-weight:700; font-size:84px; line-height:1; color:var(--text-primary); text-shadow:0 0 38px color-mix(in srgb, var(--recap-accent) 45%, transparent); }
+.recap-delta{
+  display:inline-block; margin-top:4px; padding:3px 12px; border-radius:999px;
+  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:20px; font-variant-numeric:tabular-nums;
+  animation:recap-rise .5s cubic-bezier(.2,.8,.2,1) both;
+}
+.recap-delta-up{ color:var(--accent-turf); background:rgba(110,231,135,.12); }
+.recap-delta-down{ color:var(--accent-danger); background:rgba(255,107,107,.12); }
+.recap-delta-flat{ color:var(--text-muted); background:var(--bg-surface-2); }
+.recap-ovr-exact{ font-size:12px; color:var(--text-muted); margin-top:6px; }
+
+.recap-tiles{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.recap-tile{ background:var(--bg-surface); border:1px solid var(--border-glass); border-radius:16px; padding:12px 8px; }
+.recap-tile b{ display:block; font-size:34px; line-height:1.1; font-weight:700; }
+.recap-tile span{ font-size:12px; color:var(--text-muted); }
+
+.recap-awards{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+.recap-award{
+  padding:7px 14px; border-radius:999px; font-weight:700; font-size:13px; color:var(--accent-gold);
+  border:1px solid var(--accent-gold); background:color-mix(in srgb, var(--accent-gold) 12%, transparent);
+}
+
+.recap-rank-line{ display:flex; align-items:baseline; justify-content:center; gap:10px; }
+.recap-rank-line b{ font-size:44px; font-weight:700; line-height:1; }
+.recap-rank-old{ font-family:'Rajdhani',sans-serif; font-size:22px; color:var(--text-muted); }
+.recap-rank-arrow{ color:var(--text-muted); }
+.recap-rank-text{ font-size:13px; color:var(--text-muted); margin-top:2px; }
+.recap-rank-up{ color:var(--accent-turf); font-weight:700; }
+.recap-rank-down{ color:var(--accent-danger); font-weight:700; }
+
+.recap-unlocks{ display:flex; flex-direction:column; gap:8px; }
+.recap-unlock{
+  display:flex; align-items:center; gap:10px; text-align:left; padding:10px 14px; border-radius:14px;
+  background:color-mix(in srgb, var(--accent-gold) 11%, transparent);
+  border:1px solid color-mix(in srgb, var(--accent-gold) 55%, transparent);
+}
+.recap-unlock span{ font-size:22px; }
+.recap-unlock b{ font-size:14px; }
+.recap-unlock-plain{ background:var(--bg-surface); border-color:var(--border-glass); }
+.recap-more{ font-size:12px; color:var(--text-muted); }
+
+.recap-actions{ display:flex; flex-direction:column; gap:10px; }
+.recap-sticky{
+  position:sticky; bottom:0; margin:0 -20px; padding:18px 20px calc(16px + env(safe-area-inset-bottom));
+  background:linear-gradient(to top, var(--bg-primary) 72%, transparent);
 }
